@@ -52,13 +52,13 @@ def resource_path(relative_path):
 
 SALDO_INICIAL = 2000
 
-# --- PALETA DE COLORES ELEGANTE: ROJOS, DORADOS Y BLANCOS ---
-# Se ha modificado esta sección para reflejar el nuevo estilo visual.
+# --- PALETA DE COLORES MODIFICADA ---
+# Se ha modificado esta sección para reflejar el nuevo estilo visual solicitado.
 ELEGANT_COLORS = {
     "dark": {
         "bg": "#1A1A1A",                 # Fondo principal: Gris muy oscuro, casi negro
         "fg": "#FFFFFF",                 # Texto principal: Blanco puro
-        "btn_bg": "#A62639",             # Botones principales: Rojo carmesí oscuro
+        "btn_bg": "#A62639",             # Botones principales: Rojo carmesí oscuro (no usado en menú)
         "btn_active": "#C43B4E",         # Botones activos/hover: Rojo más brillante
         "frame_bg": "#2C2C2C",           # Fondo de frames: Gris carbón
         "label_fg": "#FFD700",           # Etiquetas destacadas: Dorado brillante
@@ -69,8 +69,10 @@ ELEGANT_COLORS = {
         "sidebar_bg": "#212121",         # Fondo de la barra lateral: Un poco más oscuro que los frames
         # Colores adicionales para consistencia
         "gold": "#FFD700",               # Dorado brillante
-        "danger": "#C62828",
-        "neutral": "#6c757d"
+        "danger": "#C62828",             # Rojo brillante para botones de "Jugar" y "Cerrar Sesión"
+        "neutral": "#6c757d",
+        "light_blue": "#3498db",         # Azul claro para botones de acciones
+        "blue": "#2980b9"                # Azul para botón de actualizar saldo
     },
     "light": { # No se modifica el tema claro
         "bg": "white", "fg": "black", "btn_bg": "#2980b9", "btn_active": "#3498db",
@@ -716,7 +718,7 @@ class CasinoApp:
         except Exception as e:
             print(f"No se pudo cargar logo_casino.png: {e}")
         
-        tk.Label(center_frame, text="📑  Iniciar Sesión  �", font=("Helvetica", 26, "bold"), fg=c["label_fg"], bg=c["bg"]).pack(pady=(0, 20))
+        tk.Label(center_frame, text="📑  Iniciar Sesión  📑", font=("Helvetica", 26, "bold"), fg=c["label_fg"], bg=c["bg"]).pack(pady=(0, 20))
         
         form_frame = tk.Frame(center_frame, bg=c["frame_bg"], bd=5, relief="ridge", padx=30, pady=25)
         form_frame.pack(pady=15)
@@ -763,7 +765,8 @@ class CasinoApp:
             latest_balance = get_user_balance(self.current_user_id)
             if latest_balance is not None:
                 self.current_balance = latest_balance
-                self.balance_label.config(text=f"🃏 Saldo: ${self.current_balance:,.0f}".replace(",", "."))
+                # Se quita el emoticón de carta del saldo
+                self.balance_label.config(text=f"Saldo: ${self.current_balance:,.0f}".replace(",", "."))
 
     def refresh_ranking_display(self):
         if hasattr(self, 'ranking_tree') and self.ranking_tree.winfo_exists():
@@ -796,21 +799,22 @@ class CasinoApp:
         sidebar_frame.pack(side="left", fill="y", padx=0, pady=0)
         sidebar_frame.pack_propagate(False)
 
-        tk.Label(sidebar_frame, text="Acciones", font=("Helvetica", 20, "bold"), bg=c["sidebar_bg"], fg=c["btn_bg"]).pack(pady=25, padx=10)
+        # El texto "Acciones" ahora es blanco
+        tk.Label(sidebar_frame, text="Acciones", font=("Helvetica", 20, "bold"), bg=c["sidebar_bg"], fg=c["fg"]).pack(pady=25, padx=10)
         
         top_buttons_frame = tk.Frame(sidebar_frame, bg=c["sidebar_bg"])
         top_buttons_frame.pack(pady=10, padx=20, fill="x")
 
         sidebar_btn_font = ("Arial", 14, "bold")
-        # Botones de la barra lateral ahora son rojos
-        RoundButton(top_buttons_frame, 220, 55, 6, c["btn_bg"], c["sidebar_bg"], self.show_transfer_window, "💸 Transferir Saldo", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, 220, 55, 6, c["btn_bg"], c["sidebar_bg"], self.show_ranking, "🏆 Ver Ranking", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, 220, 55, 6, c["btn_bg"], c["sidebar_bg"], self.show_user_history, "📜 Ver Historial", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, 220, 55, 6, c["btn_bg"], c["sidebar_bg"], self.open_admin_login, "🍬 Canjear Dulces", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        # Botones de la barra lateral ahora son azul claro
+        RoundButton(top_buttons_frame, 220, 55, 6, c["light_blue"], c["sidebar_bg"], self.show_transfer_window, "💸 Transferir Saldo", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        RoundButton(top_buttons_frame, 220, 55, 6, c["light_blue"], c["sidebar_bg"], self.show_ranking, "🏆 Ver Ranking", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        RoundButton(top_buttons_frame, 220, 55, 6, c["light_blue"], c["sidebar_bg"], self.show_user_history, "📜 Ver Historial", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        RoundButton(top_buttons_frame, 220, 55, 6, c["light_blue"], c["sidebar_bg"], self.open_admin_login, "🍬 Canjear Dulces", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
 
         bottom_button_frame = tk.Frame(sidebar_frame, bg=c["sidebar_bg"])
         bottom_button_frame.pack(side="bottom", pady=25, padx=20, fill="x")
-        # Botón de cerrar sesión ahora es rojo
+        # Botón de cerrar sesión ahora es rojo brillante
         RoundButton(bottom_button_frame, 220, 55, 6, c["danger"], c["sidebar_bg"], self.logout, "🚪 Cerrar Sesión", sidebar_btn_font).pack(pady=10)
 
         right_sidebar_frame = tk.Frame(main_container, bg=c["sidebar_bg"], width=380, relief="raised", bd=2)
@@ -820,13 +824,12 @@ class CasinoApp:
         prizes_frame = tk.Frame(right_sidebar_frame, bg=c["sidebar_bg"])
         prizes_frame.pack(pady=(25, 15), padx=15, fill="x")
 
-        self.prizes_title_label = tk.Label(prizes_frame, text="🏆 Tabla de Premios 🍬", font=("Helvetica", 20, "bold"), bg=c["sidebar_bg"], fg=c["gold"])
+        self.prizes_title_label = tk.Label(prizes_frame, text="🏆 Tabla de Premios �", font=("Helvetica", 20, "bold"), bg=c["sidebar_bg"], fg=c["gold"])
         self.prizes_title_label.pack()
         self.animate_title(self.prizes_title_label, [c["gold"], c["btn_bg"], c["fg"]])
         
         style = ttk.Style()
         style.theme_use('default')
-        # Cabeceras de la tabla de premios ahora son doradas con texto oscuro
         style.configure("Prizes.Treeview", background=c["tree_bg"], foreground=c["tree_fg"], fieldbackground=c["tree_bg"], font=("Arial", 12), rowheight=30)
         style.map('Prizes.Treeview', background=[('selected', c["btn_bg"])])
         style.configure("Prizes.Treeview.Heading", background=c["gold"], foreground=c["bg"], font=("Arial", 14, "bold"))
@@ -884,21 +887,22 @@ class CasinoApp:
         tk.Label(games_frame, text="SELECCIONA UN JUEGO", font=("Helvetica", 18, "bold"), bg=c["frame_bg"], fg=c["fg"]).pack(pady=(15, 25))
 
         game_btn_font = ("Arial", 18, "bold")
-        # Botones de juego ahora son dorados con texto oscuro
-        RoundButton(games_frame, 320, 75, 8, c["gold"], c["frame_bg"], lambda: self.run_game("Blackjack"), "🎲 Jugar Blackjack", game_btn_font, text_color=c["bg"]).pack(pady=12)
-        RoundButton(games_frame, 320, 75, 8, c["gold"], c["frame_bg"], lambda: self.run_game("Ruleta"), "🎡 Jugar Ruleta", game_btn_font, text_color=c["bg"]).pack(pady=12)
-        RoundButton(games_frame, 320, 75, 8, c["gold"], c["frame_bg"], lambda: self.run_game("Tragamonedas"), "🎰 Jugar Tragamonedas", game_btn_font, text_color=c["bg"]).pack(pady=12)
-        RoundButton(games_frame, 320, 75, 8, c["gold"], c["frame_bg"], lambda: self.run_game("Coinflip"), "🪙 Jugar Cara o Sello", game_btn_font, text_color=c["bg"]).pack(pady=12)
+        # Botones de juego ahora son rojos brillantes con texto blanco
+        RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Blackjack"), "🎲 Jugar Blackjack", game_btn_font, text_color=c["fg"]).pack(pady=12)
+        RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Ruleta"), "🎡 Jugar Ruleta", game_btn_font, text_color=c["fg"]).pack(pady=12)
+        RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Tragamonedas"), "🎰 Jugar Tragamonedas", game_btn_font, text_color=c["fg"]).pack(pady=12)
+        RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Coinflip"), "🪙 Jugar Cara o Sello", game_btn_font, text_color=c["fg"]).pack(pady=12)
 
         
         balance_frame = tk.Frame(self.center_content_frame, bg=c["frame_bg"])
         balance_frame.pack(pady=(30, 30))
 
-        # Botón de refresco y saldo ahora son blancos
-        refresh_button = tk.Button(balance_frame, text="🔄", font=("Arial", 14, "bold"), bg=c["fg"], fg=c["bg"], command=self.refresh_balance_display, relief="raised", bd=3)
+        # Botón de refresco ahora es azul con texto blanco
+        refresh_button = tk.Button(balance_frame, text="🔄", font=("Arial", 14, "bold"), bg=c["blue"], fg=c["fg"], command=self.refresh_balance_display, relief="raised", bd=3)
         refresh_button.pack(side="left", padx=(0, 10))
 
-        self.balance_label = tk.Label(balance_frame, text=f"🃏 Saldo: ${self.current_balance:,.0f}".replace(",", "."), font=("Arial", 24, "bold"), fg=c["fg"], bg=c["frame_bg"])
+        # Texto del saldo ahora es blanco y sin emoticón
+        self.balance_label = tk.Label(balance_frame, text=f"Saldo: ${self.current_balance:,.0f}".replace(",", "."), font=("Arial", 24, "bold"), fg=c["fg"], bg=c["frame_bg"])
         self.balance_label.pack(side="left")
         
         self.refresh_balance_display()
