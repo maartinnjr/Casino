@@ -3,6 +3,7 @@ import random
 import sys
 import os
 import ctypes
+import math
 
 def resource_path(relative_path):
     """ Obtiene la ruta absoluta al recurso, funciona para desarrollo y para PyInstaller """
@@ -12,13 +13,35 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+# --- NUEVO: Función para cargar imágenes ---
+def cargar_imagen(nombre_archivo):
+    """ Carga una imagen desde la carpeta 'img'. """
+    try:
+        ruta_imagen = resource_path(os.path.join("img", nombre_archivo))
+        return pygame.image.load(ruta_imagen).convert_alpha()
+    except pygame.error as e:
+        print(f"Error al cargar imagen '{nombre_archivo}': {e}")
+        # Devuelve una superficie de error si la imagen no se encuentra
+        superficie_error = pygame.Surface((100, 100))
+        superficie_error.fill((255, 0, 255)) # Color fucsia para indicar error
+        return superficie_error
+
+def cargar_sonido(nombre):
+    """ Carga un archivo de sonido desde la carpeta 'sounds'. """
+    try:
+        ruta_sonido = resource_path(os.path.join("sounds", nombre))
+        return pygame.mixer.Sound(ruta_sonido)
+    except pygame.error as e:
+        print(f"Error al cargar sonido '{nombre}': {e}")
+        return None
+
 # --- CONFIGURACIÓN DE LA UI ---
 NEGRO = (0, 0, 0)
 BLANCO = (255, 255, 255)
 ROJO = (220, 20, 60)
 DORADO = (218, 165, 32)
-PLATA = (192, 192, 192)
-AZUL_REY = (65, 105, 225)
+DORADO_CLARO = (255, 215, 0)
+
 COLOR_SIDEBAR = (18, 18, 18, 235)
 ANCHO_SIDEBAR = 210
 ANCHO_BOTON, ALTO_BOTON = 150, 60
@@ -35,38 +58,37 @@ def dibujar_caja_transparente(superficie, rect, color, radius=15):
     pygame.draw.rect(caja_surf, color, caja_surf.get_rect(), border_radius=radius)
     superficie.blit(caja_surf, rect.topleft)
 
-def generar_imagenes_moneda(tamano, fuente_simbolo):
-    """ Genera las superficies de Pygame para la animación de la moneda. """
+# --- FUNCIÓN DE MONEDA MODIFICADA PARA USAR IMÁGENES ---
+def generar_animacion_desde_imagenes(tamano, cara_img, sello_img):
+    """ Genera la animación de giro a partir de dos imágenes cargadas. """
     imagenes = []
-    radio = tamano // 2
+    num_frames_por_lado = 15 # Aumentar frames para suavidad
     
-    # Marcos de la animación (ancho de la elipse)
-    anchos_animacion = [1.0, 0.8, 0.6, 0.4, 0.1, 0.4, 0.6, 0.8, 1.0]
+    # Redimensionar las imágenes base al tamaño deseado
+    cara_base = pygame.transform.smoothscale(cara_img, (tamano, tamano))
+    sello_base = pygame.transform.smoothscale(sello_img, (tamano, tamano))
 
-    # Crear cara
-    cara_surf = pygame.Surface((tamano, tamano), pygame.SRCALPHA)
-    pygame.draw.circle(cara_surf, DORADO, (radio, radio), radio)
-    pygame.draw.circle(cara_surf, (255, 223, 0), (radio, radio), radio - 5)
-    simbolo_c = fuente_simbolo.render("C", True, NEGRO)
-    cara_surf.blit(simbolo_c, simbolo_c.get_rect(center=(radio, radio)))
-    
-    # Crear sello
-    sello_surf = pygame.Surface((tamano, tamano), pygame.SRCALPHA)
-    pygame.draw.circle(sello_surf, PLATA, (radio, radio), radio)
-    pygame.draw.circle(sello_surf, (220, 220, 220), (radio, radio), radio - 5)
-    simbolo_s = fuente_simbolo.render("S", True, NEGRO)
-    sello_surf.blit(simbolo_s, simbolo_s.get_rect(center=(radio, radio)))
-
-    # Generar frames de animación
-    for i, ancho_rel in enumerate(anchos_animacion):
+    for i in range(num_frames_por_lado * 2):
         frame_surf = pygame.Surface((tamano, tamano), pygame.SRCALPHA)
-        color = DORADO if i < len(anchos_animacion) / 2 else PLATA
-        pygame.draw.ellipse(frame_surf, color, (radio - radio * ancho_rel, 0, tamano * ancho_rel, tamano))
+        
+        progreso = i / (num_frames_por_lado - 1)
+        if i >= num_frames_por_lado:
+            progreso = 2 - progreso
+
+        # Usar coseno para una transición de tamaño más suave (ease-in, ease-out)
+        ancho_rel = abs(math.cos(progreso * math.pi / 2))
+        ancho_actual = int(tamano * ancho_rel)
+        if ancho_actual < 1: ancho_actual = 1
+
+        # Seleccionar la textura (cara o sello) y escalarla
+        textura_actual = cara_base if i < num_frames_por_lado else sello_base
+        textura_escalada = pygame.transform.smoothscale(textura_actual, (ancho_actual, tamano))
+        
+        rect_textura = textura_escalada.get_rect(center=(tamano // 2, tamano // 2))
+        frame_surf.blit(textura_escalada, rect_textura)
+        
         imagenes.append(frame_surf)
         
-    imagenes.insert(0, cara_surf) # Frame inicial es Cara
-    imagenes.insert(5, sello_surf) # Frame intermedio es Sello
-    
     return imagenes
 
 
@@ -103,6 +125,7 @@ class Boton:
 def juego_coinflip():
     """ Función principal del juego de Coinflip. """
     pygame.init()
+    pygame.mixer.init()
 
     info_local = pygame.display.Info()
     ANCHO, ALTO = info_local.current_w, info_local.current_h
@@ -122,20 +145,31 @@ def juego_coinflip():
     fuente_titulo = pygame.font.SysFont("arial", 40, bold=True)
     fuente_resultado = pygame.font.SysFont("arial", 50, bold=True)
     fuente_mediana = pygame.font.SysFont("arial", 28)
-    fuente_simbolo_moneda = pygame.font.SysFont("timesnewroman", 150, bold=True)
+
+    sonidos = {
+        # "lanzar": cargar_sonido("coin_flip.wav"), # SONIDO DE LANZAMIENTO DESACTIVADO
+        "ganar": cargar_sonido("winfruit.wav"),
+        "perder": cargar_sonido("lose.wav")
+    }
 
     fondo_img = pygame.image.load(resource_path("fondocoinflip.jpg")).convert()
     
-    # --- CAMBIO: Moneda más grande ---
-    tamano_moneda = 350
-    imagenes_moneda = generar_imagenes_moneda(tamano_moneda, fuente_simbolo_moneda)
+    # --- CARGA DE IMÁGENES DE LA MONEDA ---
+    cara_img_original = cargar_imagen("cara.png")
+    sello_img_original = cargar_imagen("sello.png")
+    
+    tamano_moneda = 300
+    imagenes_moneda = generar_animacion_desde_imagenes(tamano_moneda, cara_img_original, sello_img_original)
+    # Guardar una copia redimensionada para mostrarla estática
+    cara_img = pygame.transform.smoothscale(cara_img_original, (tamano_moneda, tamano_moneda))
+    sello_img = pygame.transform.smoothscale(sello_img_original, (tamano_moneda, tamano_moneda))
 
     x_botones = (ANCHO_SIDEBAR - ANCHO_BOTON) // 2
     y_inicial_botones = 150
     espacio_botones = ALTO_BOTON + 20
     
-    boton_cara = Boton(x_botones, y_inicial_botones, "CARA", DORADO, (255, 215, 0), fuente)
-    boton_sello = Boton(x_botones, y_inicial_botones + espacio_botones, "SELLO", AZUL_REY, (100, 149, 237), fuente)
+    boton_cara = Boton(x_botones, y_inicial_botones, "CARA", (200, 150, 0), (255, 215, 0), fuente)
+    boton_sello = Boton(x_botones, y_inicial_botones + espacio_botones, "SELLO", (100, 100, 150), (150, 150, 200), fuente)
     boton_lanzar = Boton(x_botones, y_inicial_botones + espacio_botones * 2.5, "LANZAR", (0, 100, 0), (50, 150, 50), fuente)
     boton_salir = Boton(x_botones, ALTO - ALTO_BOTON - 40, "SALIR", (150, 0, 0), (200, 50, 50), fuente)
 
@@ -145,11 +179,17 @@ def juego_coinflip():
     estado = "esperando"
     
     frame_animacion = 0
-    velocidad_animacion = 0.5
     resultado_final = None
+    
+    altura_moneda_y = 0
+    velocidad_y = 0
+    gravedad = -0.8
     
     tiempo_resultado = None
     boton_volver_rect = None
+    
+    imagen_mostrada = cara_img
+    tiempo_inicio_animacion = 0
 
     while corriendo:
         ancho_actual, alto_actual = ventana.get_size()
@@ -171,32 +211,58 @@ def juego_coinflip():
         boton_lanzar.dibujar(ventana)
         boton_salir.dibujar(ventana)
 
-        # --- CAMBIO: Cuadro para la moneda ---
-        centro_moneda = (centro_x_juego, alto_actual // 2)
-        tamano_caja = tamano_moneda + 50
-        rect_caja_moneda = pygame.Rect(centro_moneda[0] - tamano_caja // 2, centro_moneda[1] - tamano_caja // 2, tamano_caja, tamano_caja)
+        centro_moneda_base = (centro_x_juego, alto_actual // 2 + 50)
         
+        sombra_rect = pygame.Rect(0, 0, tamano_moneda * 0.8, 20)
+        sombra_rect.center = (centro_moneda_base[0], centro_moneda_base[1] + tamano_moneda // 2 + 20)
+        sombra_surf = pygame.Surface(sombra_rect.size, pygame.SRCALPHA)
+        pygame.draw.ellipse(sombra_surf, (0, 0, 0, 80), sombra_surf.get_rect())
+        ventana.blit(sombra_surf, sombra_rect)
+
+        centro_moneda_actual = (centro_moneda_base[0], centro_moneda_base[1] - altura_moneda_y)
+        
+        tamano_caja = tamano_moneda + 60
+        rect_caja_moneda = pygame.Rect(0, 0, tamano_caja, tamano_caja)
+        rect_caja_moneda.center = centro_moneda_base
         dibujar_caja_transparente(ventana, rect_caja_moneda, (0, 0, 0, 150), radius=20)
         pygame.draw.rect(ventana, DORADO, rect_caja_moneda, 2, border_radius=20)
 
-
-        # Lógica de la moneda
         if estado == "animacion":
-            frame_animacion += velocidad_animacion
-            if frame_animacion >= len(imagenes_moneda):
-                frame_animacion = 0
-            imagen_actual = imagenes_moneda[int(frame_animacion)]
-            rect_img = imagen_actual.get_rect(center=centro_moneda)
-            ventana.blit(imagen_actual, rect_img)
+            duracion_animacion = 3500
+            if pygame.time.get_ticks() - tiempo_inicio_animacion > duracion_animacion:
+                estado = "resultado"
+                altura_moneda_y = 0
+                resultado_final = random.choice(["CARA", "SELLO"])
+                
+                imagen_mostrada = cara_img if resultado_final == "CARA" else sello_img
+
+                if seleccion == resultado_final:
+                    resultado_texto_final = "¡Ganaste!"
+                    crear_resultado("ganaste")
+                    if sonidos.get("ganar"): sonidos["ganar"].play()
+                else:
+                    resultado_texto_final = "Perdiste..."
+                    crear_resultado("perdiste")
+                    if sonidos.get("perder"): sonidos["perder"].play()
+                
+                tiempo_resultado = pygame.time.get_ticks()
+            else:
+                velocidad_animacion = 0.9
+                frame_animacion = (frame_animacion + velocidad_animacion) % len(imagenes_moneda)
+                
+                altura_moneda_y += velocidad_y
+                velocidad_y += gravedad
+                if altura_moneda_y < 0:
+                    altura_moneda_y = 0
+                    velocidad_y = 0
+
+                imagen_actual = imagenes_moneda[int(frame_animacion)]
+                rect_img = imagen_actual.get_rect(center=centro_moneda_actual)
+                ventana.blit(imagen_actual, rect_img)
         
-        elif estado == "resultado":
-            imagen_final = imagenes_moneda[0] if resultado_final == "CARA" else imagenes_moneda[5]
-            rect_img = imagen_final.get_rect(center=centro_moneda)
-            ventana.blit(imagen_final, rect_img)
         else:
-            imagen_espera = imagenes_moneda[0]
-            rect_img = imagen_espera.get_rect(center=centro_moneda)
-            ventana.blit(imagen_espera, rect_img)
+            rect_img = imagen_mostrada.get_rect(center=centro_moneda_actual)
+            ventana.blit(imagen_mostrada, rect_img)
 
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
@@ -212,33 +278,23 @@ def juego_coinflip():
                     seleccion = "CARA"
                     boton_cara.seleccionado = True
                     boton_sello.seleccionado = False
+                    imagen_mostrada = cara_img
                 elif boton_sello.verificar_clic(evento):
                     seleccion = "SELLO"
                     boton_sello.seleccionado = True
                     boton_cara.seleccionado = False
+                    imagen_mostrada = sello_img
                 elif boton_lanzar.verificar_clic(evento) and seleccion:
                     estado = "animacion"
+                    velocidad_y = 25
                     tiempo_inicio_animacion = pygame.time.get_ticks()
+                    if sonidos.get("lanzar"): sonidos["lanzar"].play()
                 elif boton_salir.verificar_clic(evento):
                     crear_resultado("perdiste")
                     corriendo = False
         
-        if estado == "animacion":
-            if pygame.time.get_ticks() - tiempo_inicio_animacion > 3000:
-                estado = "resultado"
-                resultado_final = random.choice(["CARA", "SELLO"])
-                
-                if seleccion == resultado_final:
-                    resultado_texto_final = "¡Ganaste!"
-                    crear_resultado("ganaste")
-                else:
-                    resultado_texto_final = "Perdiste..."
-                    crear_resultado("perdiste")
-                
-                tiempo_resultado = pygame.time.get_ticks()
-
         if estado == "resultado" and tiempo_resultado:
-            if pygame.time.get_ticks() - tiempo_resultado >= 1000:
+            if pygame.time.get_ticks() - tiempo_resultado >= 2500:
                 capa_oscura = pygame.Surface((ancho_actual, alto_actual), pygame.SRCALPHA)
                 capa_oscura.fill((0, 0, 0, 200))
                 ventana.blit(capa_oscura, (0, 0))
@@ -252,7 +308,7 @@ def juego_coinflip():
                 dibujar_caja_transparente(ventana, rect_resultado, (20, 20, 20, 230), radius=20)
                 pygame.draw.rect(ventana, DORADO, rect_resultado, 3, border_radius=20)
 
-                color_display = DORADO if "Ganaste" in resultado_texto_final else ROJO
+                color_display = DORADO_CLARO if "Ganaste" in resultado_texto_final else ROJO
                 texto_render = fuente_resultado.render(resultado_texto_final, True, color_display)
                 texto_lado_ganador = fuente.render(f"El resultado fue: {resultado_final}", True, BLANCO)
                 

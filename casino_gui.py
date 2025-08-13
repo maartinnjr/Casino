@@ -567,7 +567,11 @@ class CasinoApp:
             print(f"No se pudo cargar logo_casino.png: {e}")
         title = tk.Label(content_container, text="💰🏆 ¡Bienvenido/a! 🎲👑", font=("Helvetica", 28, "bold"), bg=c["bg"], fg=c["fg"])
         title.pack(pady=(0, 20))
-        self.animate_title(title, [c["gold"], c["fg"], "#E6C200"]) # Animación dorada
+        
+        # MODIFICADO: Nuevos colores para la animación
+        rainbow_colors = ["#FFD700", "#FFFFFF", "#3498db", "#FF5733", "#33FF57", "#C70039", "#900C3F"]
+        self.animate_title(title, rainbow_colors) 
+        
         button_frame = tk.Frame(content_container, bg=c["bg"])
         button_frame.pack(pady=20)
         btn_w, btn_h, btn_radius, btn_font = 300, 60, 6, ("Arial", 18, "bold")
@@ -781,6 +785,9 @@ class CasinoApp:
         if self.after_id: self.root.after_cancel(self.after_id)
         self.clear_window()
         c = COLORES[self.current_mode]
+        
+        # MODIFICADO: Nuevos colores para la animación
+        rainbow_colors = ["#FFD700", "#FFFFFF", "#3498db", "#FF5733", "#33FF57", "#C70039", "#900C3F"]
 
         main_container = tk.Frame(self.root, bg=c["bg"])
         main_container.pack(fill="both", expand=True)
@@ -824,15 +831,17 @@ class CasinoApp:
         prizes_frame = tk.Frame(right_sidebar_frame, bg=c["sidebar_bg"])
         prizes_frame.pack(pady=(25, 15), padx=15, fill="x")
 
-        self.prizes_title_label = tk.Label(prizes_frame, text="🏆 Tabla de Premios �", font=("Helvetica", 20, "bold"), bg=c["sidebar_bg"], fg=c["gold"])
+        self.prizes_title_label = tk.Label(prizes_frame, text="🏆 Tabla de Premios 💎", font=("Helvetica", 20, "bold"), bg=c["sidebar_bg"], fg=c["gold"])
         self.prizes_title_label.pack()
-        self.animate_title(self.prizes_title_label, [c["gold"], c["btn_bg"], c["fg"]])
+        self.animate_title(self.prizes_title_label, rainbow_colors)
         
         style = ttk.Style()
         style.theme_use('default')
         style.configure("Prizes.Treeview", background=c["tree_bg"], foreground=c["tree_fg"], fieldbackground=c["tree_bg"], font=("Arial", 12), rowheight=30)
         style.map('Prizes.Treeview', background=[('selected', c["btn_bg"])])
-        style.configure("Prizes.Treeview.Heading", background=c["gold"], foreground=c["bg"], font=("Arial", 14, "bold"))
+        
+        # MODIFICADO: Cabecera de la tabla ahora es azul con texto blanco
+        style.configure("Prizes.Treeview.Heading", background=c["light_blue"], foreground=c["fg"], font=("Arial", 14, "bold"))
         
         prizes_tree_frame = tk.Frame(prizes_frame, bd=2, relief="groove")
         prizes_tree_frame.pack(pady=10, fill="x")
@@ -855,7 +864,7 @@ class CasinoApp:
 
         self.ranking_title_label = tk.Label(ranking_frame, text="⭐ Top 10 Jugadores ⭐", font=("Helvetica", 20, "bold"), bg=c["sidebar_bg"], fg=c["gold"])
         self.ranking_title_label.pack()
-        self.animate_title(self.ranking_title_label, [c["gold"], c["btn_bg"], c["fg"]])
+        self.animate_title(self.ranking_title_label, rainbow_colors)
 
         ranking_tree_frame = tk.Frame(ranking_frame, bd=2, relief="groove")
         ranking_tree_frame.pack(pady=10, fill="both", expand=True)
@@ -879,7 +888,7 @@ class CasinoApp:
 
         title = tk.Label(self.center_content_frame, text=f"🎰 Bienvenido/a, {self.current_username} 🎰", font=("Helvetica", 30, "bold"), bg=c["frame_bg"], fg=c["gold"])
         title.pack(pady=(30, 20), padx=50)
-        self.animate_title(title, [c["gold"], c["fg"], "#E6C200"])
+        self.animate_title(title, rainbow_colors)
 
         games_frame = tk.Frame(self.center_content_frame, bg=c["frame_bg"])
         games_frame.pack(pady=20, padx=20, ipady=10, ipadx=10)
@@ -1067,6 +1076,9 @@ class CasinoApp:
 
     def show_ranking(self):
         c = COLORES[self.current_mode]
+        # MODIFICADO: Nuevos colores para la animación
+        rainbow_colors = ["#FFD700", "#FFFFFF", "#3498db", "#FF5733", "#33FF57", "#C70039", "#900C3F"]
+
         ranking_window = tk.Toplevel(self.root)
         ranking_window.title("🏆 Ranking de jugadores")
         ranking_window.configure(bg=c["bg"])
@@ -1075,7 +1087,7 @@ class CasinoApp:
         frame.pack(expand=True, padx=20, pady=20, fill="both")
         title = tk.Label(frame, text="🏆 Ranking por saldo y partidas 🏆", font=("Helvetica", 24, "bold"), bg=c["frame_bg"], fg=c["fg"])
         title.pack(pady=15)
-        self.animate_title(title, [c["gold"], c["btn_bg"], c["fg"]])
+        self.animate_title(title, rainbow_colors)
         tree_frame = tk.Frame(frame, bd=2, relief="groove")
         tree_frame.pack(padx=10, pady=10, fill="both", expand=True)
         columns = ("usuario", "saldo", "ganadas", "perdidas", "empatadas")
@@ -1127,6 +1139,9 @@ class CasinoApp:
 
     def show_user_history(self):
         c = COLORES[self.current_mode]
+        # MODIFICADO: Nuevos colores para la animación
+        rainbow_colors = ["#FFD700", "#FFFFFF", "#3498db", "#FF5733", "#33FF57", "#C70039", "#900C3F"]
+        
         history_window = tk.Toplevel(self.root)
         history_window.title(f"📜 Historial de {self.current_username}")
         history_window.configure(bg=c["bg"])
@@ -1135,7 +1150,7 @@ class CasinoApp:
         frame.pack(expand=True, padx=20, pady=20, fill="both")
         title = tk.Label(frame, text=f"📜 Historial de apuestas de {self.current_username}", font=("Helvetica", 22, "bold"), bg=c["frame_bg"], fg=c["fg"])
         title.pack(pady=15)
-        self.animate_title(title, [c["gold"], c["btn_bg"], c["fg"]])
+        self.animate_title(title, rainbow_colors)
         tree_frame = tk.Frame(frame, bd=2, relief="groove")
         tree_frame.pack(padx=10, pady=10, fill="both", expand=True)
         columns = ("fecha", "juego", "apuesta", "resultado")
