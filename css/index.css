@@ -326,3 +326,60 @@ body {
     background-color: #a81541;
     transform: translateY(-2px);
 }
+
+.ranking-container {
+    border: 3px solid transparent;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-top: 4rem;
+    position: relative;
+    background-image: 
+        radial-gradient(circle, hsl(300, 55%, 15%), hsl(300, 84%, 5%)),
+        linear-gradient(to right, #FFC107, #DC1B53);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+}
+
+.ranking-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    text-align: center;
+    color: #FFC107;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+}
+
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ranking-table th, .ranking-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 193, 7, 0.2);
+    background-color: transparent; 
+}
+
+.ranking-table th {
+    color: #FFC107;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.ranking-table td {
+    color: #eee;
+    font-size: 1.1rem;
+}
+
+.ranking-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ranking-table td:first-child {
+    font-weight: bold;
+    color: #DC1B53;
+    font-size: 1.5rem;
+    text-align: center;
+}
