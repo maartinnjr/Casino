@@ -16,11 +16,11 @@ import coinflip # <-- NUEVA IMPORTACIÓN
 
 # --- CONFIGURACIÓN DE LA CONEXIÓN A LA BASE DE DATOS MYSQL ---
 db_config = {
-    'host': 'shinkansen.proxy.rlwy.net',
-    'user': 'root',
-    'password': 'wEWnpjufrkFVWvhNcMnoKCPXtfJEgrMD',
-    'database': 'railway',
-    'port': 53316
+    'host': '192.168.1.139',
+    'user': 'Casino',
+    'password': 'casino123',
+    'database': 'casinodb',
+    'port': 3306
 }
 
 db_connection = None
