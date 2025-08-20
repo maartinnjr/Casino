@@ -33,12 +33,32 @@ document.addEventListener('DOMContentLoaded', function() {
         data.forEach((partida, index) => {
             const row = document.createElement('tr');
             
-            // Contenido de la fila actualizado para el ranking
+            let resultadoClase = '';
+            let resultadoTexto = '';
+
+            switch (partida.resultado) {
+                case 'ganaste':
+                    resultadoClase = 'resultado-ganaste';
+                    resultadoTexto = 'Ganó'; // <-- TEXTO MODIFICADO
+                    break;
+                case 'perdiste':
+                    resultadoClase = 'resultado-perdiste';
+                    resultadoTexto = 'Perdió'; // <-- TEXTO MODIFICADO
+                    break;
+                case 'empate':
+                    resultadoClase = 'resultado-empate';
+                    resultadoTexto = 'Empate'; // <-- TEXTO MODIFICADO
+                    break;
+                default:
+                    resultadoTexto = partida.resultado;
+            }
+            
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td>${partida.usuario}</td> 
                 <td>${partida.apuesta}</td>
-                <td>${partida.tipo_moneda}</td>
+                <td>${partida.nombre_juego}</td>
+                <td><span class="${resultadoClase}">${resultadoTexto}</span></td>
             `;
             
             rankingBody.appendChild(row);
@@ -53,11 +73,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             displayRanking(data);
 
-        } catch (error) {
+        } catch (error)
+        {
             console.error('Error al obtener los datos del ranking:', error);
             const rankingBody = document.getElementById('ranking-body');
             if (rankingBody) {
-                rankingBody.innerHTML = '<tr><td colspan="4">No se pudo cargar el ranking.</td></tr>';
+                rankingBody.innerHTML = '<tr><td colspan="5">No se pudo cargar el ranking.</td></tr>';
             }
         }
     }

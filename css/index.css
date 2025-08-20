@@ -328,58 +328,63 @@ body {
 }
 
 .ranking-container {
-    border: 3px solid transparent;
+    background-color: rgba(10, 0, 20, 0.8);
     border-radius: 15px;
     padding: 2rem;
     margin-top: 4rem;
-    position: relative;
-    background-image: 
-        radial-gradient(circle, hsl(300, 55%, 15%), hsl(300, 84%, 5%)),
-        linear-gradient(to right, #FFC107, #DC1B53);
-    background-origin: border-box;
-    background-clip: padding-box, border-box;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    border: 2px solid #333;
 }
 
 .ranking-title {
     font-family: 'Playfair Display', serif;
-    font-size: 2.5rem;
+    font-size: 2.8rem;
     text-align: center;
-    color: #FFC107;
+    color: #FFD700;
     margin-top: 0;
-    margin-bottom: 1.5rem;
-    text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+    margin-bottom: 2rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .ranking-table {
     width: 100%;
     border-collapse: collapse;
-}
-
-.ranking-table th, .ranking-table td {
-    padding: 1rem;
-    text-align: left;
-    border-bottom: 1px solid rgba(255, 193, 7, 0.2);
-    background-color: transparent; 
-}
-
-.ranking-table th {
-    color: #FFC107;
-    font-size: 1.2rem;
-    font-weight: 700;
-}
-
-.ranking-table td {
     color: #eee;
     font-size: 1.1rem;
 }
 
-.ranking-table tr:last-child td {
+.ranking-table thead th {
+    background-color: rgba(50, 50, 50, 0.7);
+    color: #FFC107;
+    font-weight: bold;
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 2px solid #FFC107;
+    font-size: 1.2rem;
+}
+
+.ranking-table tbody td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ranking-table tbody tr:last-child td {
     border-bottom: none;
 }
 
+.ranking-table tbody tr:nth-child(odd) {
+    background-color: rgba(20, 20, 20, 0.5);
+}
+
 .ranking-table td:first-child {
-    font-weight: bold;
-    color: #DC1B53;
-    font-size: 1.5rem;
     text-align: center;
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #f0f0f0;
+}
+
+.ranking-table td:nth-child(3) {
+    color: #FFD700;
+    font-weight: bold;
 }
