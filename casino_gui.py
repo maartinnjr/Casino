@@ -421,6 +421,10 @@ class CasinoApp:
         self.is_muted = False
         self.music_volume = 0.5  # Volumen predeterminado
         self.load_and_play_music()
+        
+        # --- Variables para los botones de música ---
+        self.start_screen_mute_button = None
+        self.main_menu_mute_button = None
         # --- FIN: SECCIÓN DE MÚSICA MODIFICADA ---
 
         self.root = root
@@ -449,7 +453,7 @@ class CasinoApp:
 
         self.show_start_screen()
 
-    # --- INICIO: NUEVAS FUNCIONES DE MÚSICA ---
+    # --- INICIO: FUNCIONES DE MÚSICA MODIFICADAS Y NUEVAS ---
     def load_and_play_music(self):
         """Escanea la carpeta 'musica', carga la lista de canciones y reproduce la primera."""
         music_folder = resource_path("musica")
@@ -482,25 +486,45 @@ class CasinoApp:
         except pygame.error as e:
             print(f"No se pudo cargar la canción '{self.song_list[index]}': {e}")
 
+    def set_volume(self, val):
+        """Ajusta el volumen de la música desde el control deslizante."""
+        self.music_volume = float(val)
+        if not self.is_muted:
+            pygame.mixer.music.set_volume(self.music_volume)
+
     def toggle_mute(self):
-        """Silencia o activa el sonido de la música."""
+        """Silencia o activa el sonido de la música y actualiza los botones."""
         self.is_muted = not self.is_muted
         if self.is_muted:
             pygame.mixer.music.set_volume(0)
-            self.mute_button.config(text="Activar Sonido")
         else:
             pygame.mixer.music.set_volume(self.music_volume)
-            self.mute_button.config(text="Desactivar Sonido")
+        self.update_mute_buttons()
+
+    def update_mute_buttons(self):
+        """Actualiza el texto/icono de los botones de silencio en todas las pantallas."""
+        # Botón de icono en la pantalla de inicio
+        icon_text = "🔇" if self.is_muted else "🔊"
+        if self.start_screen_mute_button and self.start_screen_mute_button.winfo_exists():
+            self.start_screen_mute_button.config(text=icon_text)
+
+        # Botón de texto en el menú principal
+        button_text = "Activar Sonido" if self.is_muted else "Desactivar Sonido"
+        if self.main_menu_mute_button and self.main_menu_mute_button.winfo_exists():
+            # Actualiza el texto del botón personalizado y lo redibuja
+            self.main_menu_mute_button.text = button_text
+            self.main_menu_mute_button._redraw(self.main_menu_mute_button.color)
+
 
     def show_song_selection_window(self):
-        """Muestra una ventana para que el usuario elija una canción."""
+        """Muestra una ventana para que el usuario elija una canción y ajuste el volumen."""
         if not self.song_list:
             messagebox.showinfo("Sin Canciones", "No hay canciones en la carpeta 'musica' para seleccionar.")
             return
 
         c = COLORES[self.current_mode]
         song_window = tk.Toplevel(self.root)
-        song_window.title("Seleccionar Canción")
+        song_window.title("Seleccionar Canción y Volumen")
         song_window.configure(bg=c["bg"])
         song_window.grab_set()
         song_window.transient(self.root)
@@ -512,23 +536,31 @@ class CasinoApp:
 
         listbox = tk.Listbox(frame, font=("Arial", 12), bg=c["tree_bg"], fg=c["tree_fg"], selectbackground=c["gold"], width=40, height=10)
         for song_name in self.song_list:
-            # Mostrar nombres sin la extensión .mp3
             listbox.insert(tk.END, os.path.splitext(song_name)[0])
         listbox.pack(pady=10)
         
-        # Pre-seleccionar la canción actual
         if self.song_list:
             listbox.selection_set(self.current_song_index)
+
+        # --- BARRA DE VOLUMEN AÑADIDA AQUÍ ---
+        tk.Label(frame, text="Volumen", font=("Arial", 12, "bold"), bg=c["frame_bg"], fg=c["fg"]).pack(pady=(15, 5))
+        volume_slider = tk.Scale(frame, from_=0, to=1, resolution=0.01, orient="horizontal",
+                                 command=self.set_volume, bg=c["frame_bg"], fg=c["fg"],
+                                 troughcolor=c["neutral"], highlightthickness=0, length=250)
+        volume_slider.set(self.music_volume)
+        volume_slider.pack(fill="x", pady=5)
+        # --- FIN DE BARRA DE VOLUMEN ---
 
         def on_select():
             selection = listbox.curselection()
             if selection:
                 selected_index = selection[0]
-                self.play_song(selected_index)
-                song_window.destroy()
+                if self.current_song_index != selected_index:
+                    self.play_song(selected_index)
+            song_window.destroy()
 
-        tk.Button(frame, text="Seleccionar", command=on_select, font=("Arial", 12, "bold"), bg=c["gold"], fg=c["bg"]).pack(pady=10)
-    # --- FIN: NUEVAS FUNCIONES DE MÚSICA ---
+        tk.Button(frame, text="Aceptar", command=on_select, font=("Arial", 12, "bold"), bg=c["gold"], fg=c["bg"]).pack(pady=(20, 10))
+    # --- FIN: FUNCIONES DE MÚSICA ---
 
     def apply_theme(self):
         c = COLORES[self.current_mode]
@@ -618,7 +650,7 @@ class CasinoApp:
         right_frame = tk.Frame(main_frame, bg=c["bg"])
         right_frame.place(relx=0.45, rely=0, relwidth=0.55, relheight=1)
         self.start_slideshow(right_frame)
-        return left_frame
+        return left_frame, main_frame
 
     def _toggle_password_visibility(self, entry, button):
         """Helper function to toggle password visibility."""
@@ -635,7 +667,7 @@ class CasinoApp:
             self.root.quit()
 
     def show_start_screen(self):
-        left_frame = self._create_split_layout()
+        left_frame, main_frame = self._create_split_layout()
         c = COLORES[self.current_mode]
         content_container = tk.Frame(left_frame, bg=c["bg"])
         content_container.pack(expand=True)
@@ -661,17 +693,16 @@ class CasinoApp:
         RoundButton(button_frame, btn_w, btn_h, btn_radius, c["danger"], c["bg"], self.confirm_quit, "❌ Salir", btn_font).pack(pady=10)
 
         # --- INICIO: NUEVOS CONTROLES DE MÚSICA EN PANTALLA DE INICIO ---
-        music_control_frame = tk.Frame(content_container, bg=c["bg"])
-        music_control_frame.pack(pady=20)
+        icon_font = ("Arial", 24)
+        icon_bg = c["bg"]
         
-        music_btn_font = ("Arial", 14, "bold")
-        music_btn_w, music_btn_h = 250, 45
+        self.start_screen_mute_button = tk.Button(main_frame, text="🔊", font=icon_font, bg=icon_bg, fg="white", command=self.toggle_mute, relief="flat", borderwidth=0, highlightthickness=0)
+        self.start_screen_mute_button.place(relx=0.01, rely=0.98, anchor="sw")
 
-        RoundButton(music_control_frame, music_btn_w, music_btn_h, 6, c["light_blue"], c["bg"], self.show_song_selection_window, "🎵 Cambiar Canción", music_btn_font, text_color=c["fg"]).pack(pady=8)
+        change_music_button = tk.Button(main_frame, text="🎵", font=icon_font, bg=icon_bg, fg="white", command=self.show_song_selection_window, relief="flat", borderwidth=0, highlightthickness=0)
+        change_music_button.place(relx=0.44, rely=0.98, anchor="se") # Colocado al borde del panel izquierdo
         
-        initial_mute_text = "Activar Sonido" if self.is_muted else "Desactivar Sonido"
-        self.mute_button = RoundButton(music_control_frame, music_btn_w, music_btn_h, 6, c["neutral"], c["bg"], self.toggle_mute, initial_mute_text, music_btn_font, text_color=c["fg"])
-        self.mute_button.pack(pady=8)
+        self.update_mute_buttons()
         # --- FIN: NUEVOS CONTROLES DE MÚSICA EN PANTALLA DE INICIO ---
 
         try:
@@ -684,7 +715,7 @@ class CasinoApp:
             print(f"No se pudo cargar logo_empresa.png: {e}")
 
     def show_register_screen(self):
-        left_frame = self._create_split_layout()
+        left_frame, _ = self._create_split_layout()
         c = COLORES[self.current_mode]
         content_container = tk.Frame(left_frame, bg=c["bg"])
         content_container.pack(expand=True, fill="both")
@@ -792,7 +823,7 @@ class CasinoApp:
         RoundButton(button_container, btn_w, btn_h, btn_radius, c["neutral"], c["bg"], self.show_start_screen, "⬅ Volver", btn_font).pack(pady=5)
 
     def show_login_screen(self):
-        left_frame = self._create_split_layout()
+        left_frame, _ = self._create_split_layout()
         c = COLORES[self.current_mode]
         content_container = tk.Frame(left_frame, bg=c["bg"])
         content_container.pack(expand=True, fill="both")
@@ -907,10 +938,19 @@ class CasinoApp:
         top_buttons_frame.pack(pady=10, padx=20, fill="x")
 
         sidebar_btn_font = ("Arial", 14, "bold")
-        RoundButton(top_buttons_frame, 220, 55, 6, c["light_blue"], c["sidebar_bg"], self.show_transfer_window, "💸 Transferir Saldo", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, 220, 55, 6, c["light_blue"], c["sidebar_bg"], self.show_ranking, "🏆 Ver Ranking", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, 220, 55, 6, c["light_blue"], c["sidebar_bg"], self.show_user_history, "📜 Ver Historial", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, 220, 55, 6, c["light_blue"], c["sidebar_bg"], self.open_admin_login, "🍬 Canjear Dulces", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        btn_w, btn_h = 220, 55
+        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_transfer_window, "💸 Transferir Saldo", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_ranking, "🏆 Ver Ranking", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_user_history, "📜 Ver Historial", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.open_admin_login, "🍬 Canjear Dulces", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+
+        # --- INICIO: NUEVOS CONTROLES DE MÚSICA EN LA BARRA LATERAL ---
+        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_song_selection_window, "🎵 Cambiar Música", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        
+        mute_button_text = "Activar Sonido" if self.is_muted else "Desactivar Sonido"
+        self.main_menu_mute_button = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["neutral"], c["sidebar_bg"], self.toggle_mute, mute_button_text, sidebar_btn_font, text_color=c["fg"])
+        self.main_menu_mute_button.pack(pady=10)
+        # --- FIN: NUEVOS CONTROLES DE MÚSICA EN LA BARRA LATERAL ---
 
         bottom_button_frame = tk.Frame(sidebar_frame, bg=c["sidebar_bg"])
         bottom_button_frame.pack(side="bottom", pady=25, padx=20, fill="x")
