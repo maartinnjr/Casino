@@ -12,7 +12,7 @@ from datetime import datetime
 import blackjack
 import ruleta
 import tragamonedas
-import coinflip # <-- NUEVA IMPORTACIÓN
+import coinflip
 
 # --- CONFIGURACIÓN DE LA CONEXIÓN A LA BASE DE DATOS MYSQL ---
 db_config = {
@@ -39,7 +39,7 @@ def get_db_connection():
         sys.exit()
         return None
 
-# --- AÑADIR COINFLIP AL MAPA DE JUEGOS ---
+# --- MAPA DE JUEGOS ---
 GAME_ID_MAP = {"Blackjack": 1, "Ruleta": 2, "Tragamonedas": 3, "Coinflip": 4}
 
 def resource_path(relative_path):
@@ -52,39 +52,23 @@ def resource_path(relative_path):
 
 SALDO_INICIAL = 2000
 
-# --- PALETA DE COLORES MODIFICADA ---
-# Se ha modificado esta sección para reflejar el nuevo estilo visual solicitado.
+# --- PALETA DE COLORES ---
 ELEGANT_COLORS = {
     "dark": {
-        "bg": "#1A1A1A",                 # Fondo principal: Gris muy oscuro, casi negro
-        "fg": "#FFFFFF",                 # Texto principal: Blanco puro
-        "btn_bg": "#A62639",             # Botones principales: Rojo carmesí oscuro (no usado en menú)
-        "btn_active": "#C43B4E",         # Botones activos/hover: Rojo más brillante
-        "frame_bg": "#2C2C2C",           # Fondo de frames: Gris carbón
-        "label_fg": "#FFD700",           # Etiquetas destacadas: Dorado brillante
-        "tree_bg": "#2C2C2C",            # Fondo de Treeview: Gris carbón
-        "tree_fg": "#FFFFFF",            # Texto de Treeview: Blanco
-        "tree_heading_bg": "#A62639",    # Cabecera de Treeview: Rojo carmesí
-        "tree_heading_fg": "#FFFFFF",    # Texto de cabecera de Treeview: Blanco
-        "sidebar_bg": "#212121",         # Fondo de la barra lateral: Un poco más oscuro que los frames
-        # Colores adicionales para consistencia
-        "gold": "#FFD700",               # Dorado brillante
-        "danger": "#C62828",             # Rojo brillante para botones de "Jugar" y "Cerrar Sesión"
-        "neutral": "#6c757d",
-        "light_blue": "#3498db",         # Azul claro para botones de acciones
-        "blue": "#2980b9"                # Azul para botón de actualizar saldo
+        "bg": "#1A1A1A", "fg": "#FFFFFF", "btn_bg": "#A62639", "btn_active": "#C43B4E",
+        "frame_bg": "#2C2C2C", "label_fg": "#FFD700", "tree_bg": "#2C2C2C",
+        "tree_fg": "#FFFFFF", "tree_heading_bg": "#A62639", "tree_heading_fg": "#FFFFFF",
+        "sidebar_bg": "#212121", "gold": "#FFD700", "danger": "#C62828",
+        "neutral": "#6c757d", "light_blue": "#3498db", "blue": "#2980b9"
     },
-    "light": { # No se modifica el tema claro
+    "light": {
         "bg": "white", "fg": "black", "btn_bg": "#2980b9", "btn_active": "#3498db",
-        "frame_bg": "#F5F5F5",
-        "label_fg": "black", "tree_bg": "#EAEAEA",
+        "frame_bg": "#F5F5F5", "label_fg": "black", "tree_bg": "#EAEAEA",
         "tree_fg": "black", "tree_heading_bg": "#2980b9", "tree_heading_fg": "white",
         "sidebar_bg": "#DDDDDD"
     }
 }
-
 COLORES = ELEGANT_COLORS
-
 
 class RoundButton(tk.Canvas):
     def __init__(self, parent, width, height, cornerradius, color, bg, command=None, text="", font=None, text_color="white", border_color="#666666", border_width=2):
@@ -164,7 +148,6 @@ class RoundButton(tk.Canvas):
         self._redraw(self.color)
 
 # --- FUNCIONES DE BASE DE DATOS ---
-
 def get_dropdown_data(table_name):
     conn = get_db_connection()
     if not conn: return []
@@ -414,24 +397,35 @@ def perform_transfer(sender_id, recipient_id, amount, password):
 
 class CasinoApp:
     def __init__(self, root):
+        self.root = root # <- CORRECCIÓN: Asignar root primero.
         # --- INICIO: SECCIÓN DE MÚSICA MODIFICADA ---
         pygame.mixer.init()
         self.song_list = []
         self.current_song_index = 0
         self.is_muted = False
-        self.music_volume = 0.5  # Volumen predeterminado
+        self.music_volume = 0.5
+        self.is_paused_for_game = False
+        self.song_length = 0
+        self.song_update_job = None
+        self.song_progress_slider = None
+        self.is_seeking = False
         self.load_and_play_music()
         
-        # --- Variables para los botones de música ---
         self.start_screen_mute_button = None
         self.main_menu_mute_button = None
         # --- FIN: SECCIÓN DE MÚSICA MODIFICADA ---
 
-        self.root = root
         self.current_mode = "dark"
         self.apply_theme()
         self.root.title("🎰 Casino Virtual 🎰")
+        
+        # --- INICIO: CORRECCIÓN DE PANTALLA COMPLETA ---
+        w, h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        self.root.geometry(f"{w}x{h}+0+0")
         self.root.attributes('-fullscreen', True)
+        self.root.bind("<F11>", lambda e: self.root.attributes("-fullscreen", not self.root.attributes("-fullscreen")))
+        self.root.bind("<Escape>", lambda e: self.root.attributes("-fullscreen", False))
+        # --- FIN: CORRECCIÓN DE PANTALLA COMPLETA ---
 
         self.current_user_id = None
         self.current_username = None
@@ -455,7 +449,6 @@ class CasinoApp:
 
     # --- INICIO: FUNCIONES DE MÚSICA MODIFICADAS Y NUEVAS ---
     def load_and_play_music(self):
-        """Escanea la carpeta 'musica', carga la lista de canciones y reproduce la primera."""
         music_folder = resource_path("musica")
         if os.path.isdir(music_folder):
             self.song_list = [f for f in os.listdir(music_folder) if f.endswith(".mp3")]
@@ -465,10 +458,9 @@ class CasinoApp:
                 print("No se encontraron archivos .mp3 en la carpeta 'musica'.")
         else:
             print("La carpeta 'musica' no existe. Por favor, créala y añade canciones.")
-            os.makedirs(music_folder) # Crea la carpeta si no existe
+            os.makedirs(music_folder)
 
     def play_song(self, index):
-        """Reproduce una canción de la lista según su índice."""
         if not self.song_list or not (0 <= index < len(self.song_list)):
             return
         
@@ -477,23 +469,75 @@ class CasinoApp:
         
         try:
             pygame.mixer.music.load(song_path)
-            # Aplicar el estado de silencio/volumen actual
+            
+            # Obtener la duración de la canción
+            sound = pygame.mixer.Sound(song_path)
+            self.song_length = sound.get_length()
+
             if self.is_muted:
                 pygame.mixer.music.set_volume(0)
             else:
                 pygame.mixer.music.set_volume(self.music_volume)
-            pygame.mixer.music.play(-1) # -1 para bucle infinito
+            pygame.mixer.music.play(-1)
+            
+            # Iniciar el actualizador de la barra de progreso
+            self.start_progress_updater()
+            
         except pygame.error as e:
             print(f"No se pudo cargar la canción '{self.song_list[index]}': {e}")
+            self.song_length = 0
 
     def set_volume(self, val):
-        """Ajusta el volumen de la música desde el control deslizante."""
         self.music_volume = float(val)
         if not self.is_muted:
             pygame.mixer.music.set_volume(self.music_volume)
 
+    def seek_song(self, val):
+        """Adelanta o retrocede la canción al punto especificado por el slider."""
+        if self.is_seeking: # Evita llamadas recursivas si el set() activa el command
+            return
+        
+        seek_seconds = float(val)
+        
+        # Detener y reiniciar la canción desde la nueva posición
+        pygame.mixer.music.play(loops=-1, start=seek_seconds)
+        
+        # Si estaba en silencio, hay que volver a aplicar el volumen 0
+        if self.is_muted:
+            pygame.mixer.music.set_volume(0)
+        else:
+            pygame.mixer.music.set_volume(self.music_volume)
+
+    def start_progress_updater(self):
+        """Inicia el proceso que actualiza la barra de progreso de la canción."""
+        if self.song_update_job:
+            self.root.after_cancel(self.song_update_job)
+        self.update_song_progress()
+
+    def update_song_progress(self):
+        """Actualiza la posición del slider de progreso de la canción."""
+        if pygame.mixer.music.get_busy() and self.song_progress_slider:
+            try:
+                # get_pos() devuelve milisegundos desde que empezó a sonar
+                current_pos_ms = pygame.mixer.music.get_pos()
+                current_pos_s = current_pos_ms / 1000.0
+                
+                # Evita que el slider actualice la música mientras el usuario la mueve
+                self.is_seeking = True
+                self.song_progress_slider.set(current_pos_s)
+                self.is_seeking = False
+            except tk.TclError:
+                # La ventana/widget fue destruida, detener el actualizador
+                self.song_progress_slider = None
+                if self.song_update_job:
+                    self.root.after_cancel(self.song_update_job)
+                return
+        
+        # Reprogramar la actualización
+        self.song_update_job = self.root.after(500, self.update_song_progress)
+
+
     def toggle_mute(self):
-        """Silencia o activa el sonido de la música y actualiza los botones."""
         self.is_muted = not self.is_muted
         if self.is_muted:
             pygame.mixer.music.set_volume(0)
@@ -502,22 +546,16 @@ class CasinoApp:
         self.update_mute_buttons()
 
     def update_mute_buttons(self):
-        """Actualiza el texto/icono de los botones de silencio en todas las pantallas."""
-        # Botón de icono en la pantalla de inicio
         icon_text = "🔇" if self.is_muted else "🔊"
         if self.start_screen_mute_button and self.start_screen_mute_button.winfo_exists():
             self.start_screen_mute_button.config(text=icon_text)
 
-        # Botón de texto en el menú principal
         button_text = "Activar Sonido" if self.is_muted else "Desactivar Sonido"
         if self.main_menu_mute_button and self.main_menu_mute_button.winfo_exists():
-            # Actualiza el texto del botón personalizado y lo redibuja
             self.main_menu_mute_button.text = button_text
             self.main_menu_mute_button._redraw(self.main_menu_mute_button.color)
 
-
     def show_song_selection_window(self):
-        """Muestra una ventana para que el usuario elija una canción y ajuste el volumen."""
         if not self.song_list:
             messagebox.showinfo("Sin Canciones", "No hay canciones en la carpeta 'musica' para seleccionar.")
             return
@@ -532,7 +570,15 @@ class CasinoApp:
         frame = tk.Frame(song_window, bg=c["frame_bg"], padx=20, pady=20)
         frame.pack(expand=True, padx=20, pady=20)
 
-        tk.Label(frame, text="Elige una canción", font=("Helvetica", 16, "bold"), bg=c["frame_bg"], fg=c["fg"]).pack(pady=10)
+        tk.Label(frame, text="Control de Música", font=("Helvetica", 16, "bold"), bg=c["frame_bg"], fg=c["fg"]).pack(pady=10)
+
+        # --- INICIO: NUEVA BARRA DE PROGRESO DE CANCIÓN ---
+        self.song_progress_slider = tk.Scale(frame, from_=0, to=self.song_length, resolution=0.1, orient="horizontal",
+                                 command=self.seek_song, bg=c["frame_bg"], fg=c["fg"],
+                                 troughcolor=c["neutral"], highlightthickness=0, length=300, showvalue=0)
+        self.song_progress_slider.pack(fill="x", pady=(10, 5))
+        self.start_progress_updater() # Asegura que se actualice al abrir la ventana
+        # --- FIN: NUEVA BARRA DE PROGRESO DE CANCIÓN ---
 
         listbox = tk.Listbox(frame, font=("Arial", 12), bg=c["tree_bg"], fg=c["tree_fg"], selectbackground=c["gold"], width=40, height=10)
         for song_name in self.song_list:
@@ -542,14 +588,12 @@ class CasinoApp:
         if self.song_list:
             listbox.selection_set(self.current_song_index)
 
-        # --- BARRA DE VOLUMEN AÑADIDA AQUÍ ---
         tk.Label(frame, text="Volumen", font=("Arial", 12, "bold"), bg=c["frame_bg"], fg=c["fg"]).pack(pady=(15, 5))
         volume_slider = tk.Scale(frame, from_=0, to=1, resolution=0.01, orient="horizontal",
                                  command=self.set_volume, bg=c["frame_bg"], fg=c["fg"],
                                  troughcolor=c["neutral"], highlightthickness=0, length=250)
         volume_slider.set(self.music_volume)
         volume_slider.pack(fill="x", pady=5)
-        # --- FIN DE BARRA DE VOLUMEN ---
 
         def on_select():
             selection = listbox.curselection()
@@ -557,8 +601,23 @@ class CasinoApp:
                 selected_index = selection[0]
                 if self.current_song_index != selected_index:
                     self.play_song(selected_index)
+            
+            self.song_progress_slider = None # Limpiar referencia al cerrar
+            if self.song_update_job:
+                self.root.after_cancel(self.song_update_job)
+                self.song_update_job = None
+            
             song_window.destroy()
 
+        # Limpiar referencia cuando la ventana se cierra con la 'X'
+        def on_closing():
+            self.song_progress_slider = None
+            if self.song_update_job:
+                self.root.after_cancel(self.song_update_job)
+                self.song_update_job = None
+            song_window.destroy()
+
+        song_window.protocol("WM_DELETE_WINDOW", on_closing)
         tk.Button(frame, text="Aceptar", command=on_select, font=("Arial", 12, "bold"), bg=c["gold"], fg=c["bg"]).pack(pady=(20, 10))
     # --- FIN: FUNCIONES DE MÚSICA ---
 
@@ -653,7 +712,6 @@ class CasinoApp:
         return left_frame, main_frame
 
     def _toggle_password_visibility(self, entry, button):
-        """Helper function to toggle password visibility."""
         if entry.cget('show') == '*':
             entry.config(show='')
             button.config(text='🔐')
@@ -662,7 +720,6 @@ class CasinoApp:
             button.config(text='🔓')
 
     def confirm_quit(self):
-        """Shows a confirmation dialog before quitting the application."""
         if messagebox.askyesno("Confirmar Salida", "¿Está seguro de que desea salir del casino?"):
             self.root.quit()
 
@@ -692,7 +749,6 @@ class CasinoApp:
         RoundButton(button_frame, btn_w, btn_h, btn_radius, c["gold"], c["bg"], self.show_login_screen, "🔐 Iniciar Sesión", btn_font).pack(pady=10)
         RoundButton(button_frame, btn_w, btn_h, btn_radius, c["danger"], c["bg"], self.confirm_quit, "❌ Salir", btn_font).pack(pady=10)
 
-        # --- INICIO: NUEVOS CONTROLES DE MÚSICA EN PANTALLA DE INICIO ---
         icon_font = ("Arial", 24)
         icon_bg = c["bg"]
         
@@ -700,10 +756,9 @@ class CasinoApp:
         self.start_screen_mute_button.place(relx=0.01, rely=0.98, anchor="sw")
 
         change_music_button = tk.Button(main_frame, text="🎵", font=icon_font, bg=icon_bg, fg="white", command=self.show_song_selection_window, relief="flat", borderwidth=0, highlightthickness=0)
-        change_music_button.place(relx=0.44, rely=0.98, anchor="se") # Colocado al borde del panel izquierdo
+        change_music_button.place(relx=0.44, rely=0.98, anchor="se")
         
         self.update_mute_buttons()
-        # --- FIN: NUEVOS CONTROLES DE MÚSICA EN PANTALLA DE INICIO ---
 
         try:
             img_empresa = Image.open(resource_path("logo_empresa.png"))
@@ -896,7 +951,6 @@ class CasinoApp:
             latest_balance = get_user_balance(self.current_user_id)
             if latest_balance is not None:
                 self.current_balance = latest_balance
-                # Se quita el emoticón de carta del saldo
                 self.balance_label.config(text=f"Saldo: ${self.current_balance:,.0f}".replace(",", "."))
 
     def refresh_ranking_display(self):
@@ -944,13 +998,11 @@ class CasinoApp:
         RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_user_history, "📜 Ver Historial", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
         RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.open_admin_login, "🍬 Canjear Dulces", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
 
-        # --- INICIO: NUEVOS CONTROLES DE MÚSICA EN LA BARRA LATERAL ---
         RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_song_selection_window, "🎵 Cambiar Música", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
         
         mute_button_text = "Activar Sonido" if self.is_muted else "Desactivar Sonido"
         self.main_menu_mute_button = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["neutral"], c["sidebar_bg"], self.toggle_mute, mute_button_text, sidebar_btn_font, text_color=c["fg"])
         self.main_menu_mute_button.pack(pady=10)
-        # --- FIN: NUEVOS CONTROLES DE MÚSICA EN LA BARRA LATERAL ---
 
         bottom_button_frame = tk.Frame(sidebar_frame, bg=c["sidebar_bg"])
         bottom_button_frame.pack(side="bottom", pady=25, padx=20, fill="x")
@@ -1142,7 +1194,6 @@ class CasinoApp:
         
         self.root.wait_window(admin_login_window)
         self.refresh_balance_display()
-
 
     def show_candy_exchange_window(self):
         c = COLORES[self.current_mode]
@@ -1377,6 +1428,12 @@ class CasinoApp:
         RoundButton(self.center_content_frame, btn_w, btn_h, btn_radius, c["neutral"], c["frame_bg"], self.show_main_menu, "⬅ Volver", btn_font).pack(pady=20)
 
     def _execute_game_logic(self, game, bet_placed):
+        # --- INICIO: PAUSAR MÚSICA ---
+        if pygame.mixer.music.get_busy() and not self.is_paused_for_game:
+            pygame.mixer.music.pause()
+            self.is_paused_for_game = True
+        # --- FIN: PAUSAR MÚSICA ---
+
         self.root.withdraw()
         final_result_msg = None
         bet_txt_path = resource_path("apuesta.txt")
@@ -1402,7 +1459,6 @@ class CasinoApp:
             elif game == "Ruleta": ruleta.juego_ruleta()
             elif game == "Blackjack": blackjack.juego_blackjack()
             elif game == "Coinflip": coinflip.juego_coinflip()
-
             
             if not os.path.exists(result_txt_path):
                 final_result_msg = f"No se encontró el archivo de resultado para {game}."
@@ -1419,7 +1475,7 @@ class CasinoApp:
                     elif history_result == "perdiste":
                         self.current_balance -= bet_placed
                         final_result_msg = f"Perdiste ${bet_placed:,.0f} 😞".replace(",", ".")
-                    else: # Empate
+                    else:
                         final_result_msg = "Empate. No hay cambios en el saldo."
                 elif game == "Tragamonedas":
                     try:
@@ -1444,9 +1500,15 @@ class CasinoApp:
             messagebox.showerror("Error en el juego", f"Un error ocurrió al ejecutar {game}: {e}")
         finally:
             self.root.deiconify()
+            
+            # --- INICIO: REANUDAR MÚSICA ---
             if not pygame.mixer.get_init():
                 pygame.mixer.init()
-            self.play_song(self.current_song_index)
+            
+            if self.is_paused_for_game:
+                pygame.mixer.music.unpause()
+                self.is_paused_for_game = False
+            # --- FIN: REANUDAR MÚSICA ---
             
             self.show_main_menu()
             self.refresh_balance_display()
