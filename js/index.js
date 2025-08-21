@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         rankingBody.innerHTML = '';
 
-        data.forEach((partida, index) => {
+        data.forEach((partida) => {
             const row = document.createElement('tr');
             
             let resultadoClase = '';
@@ -39,22 +39,33 @@ document.addEventListener('DOMContentLoaded', function() {
             switch (partida.resultado) {
                 case 'ganaste':
                     resultadoClase = 'resultado-ganaste';
-                    resultadoTexto = 'Ganó'; // <-- TEXTO MODIFICADO
+                    resultadoTexto = 'Ganó';
                     break;
                 case 'perdiste':
                     resultadoClase = 'resultado-perdiste';
-                    resultadoTexto = 'Perdió'; // <-- TEXTO MODIFICADO
+                    resultadoTexto = 'Perdió';
                     break;
                 case 'empate':
                     resultadoClase = 'resultado-empate';
-                    resultadoTexto = 'Empate'; // <-- TEXTO MODIFICADO
+                    resultadoTexto = 'Empate';
                     break;
                 default:
                     resultadoTexto = partida.resultado;
             }
+
+            // --- FORMATEO DE FECHA Y HORA (Día/Mes Hora:Minuto) ---
+            const fecha = new Date(partida.fecha);
+
+            const dia = String(fecha.getDate()).padStart(2, '0');
+            const mes = String(fecha.getMonth() + 1).padStart(2, '0'); // Se suma 1 porque los meses van de 0 a 11
+            const hora = String(fecha.getHours()).padStart(2, '0');
+            const minutos = String(fecha.getMinutes()).padStart(2, '0');
+
+            const fechaFormateada = `${dia}/${mes} ${hora}:${minutos}`;
             
+            // Contenido de la fila actualizado con la nueva fecha
             row.innerHTML = `
-                <td>${index + 1}</td>
+                <td>${fechaFormateada}</td>
                 <td>${partida.usuario}</td> 
                 <td>${partida.apuesta}</td>
                 <td>${partida.nombre_juego}</td>
@@ -78,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error al obtener los datos del ranking:', error);
             const rankingBody = document.getElementById('ranking-body');
             if (rankingBody) {
-                rankingBody.innerHTML = '<tr><td colspan="5">No se pudo cargar el ranking.</td></tr>';
+                rankingBody.innerHTML = '<tr><td colspan="5">No se pudo cargar el historial.</td></tr>';
             }
         }
     }

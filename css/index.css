@@ -328,63 +328,92 @@ body {
 }
 
 .ranking-container {
-    background-color: rgba(10, 0, 20, 0.8);
-    border-radius: 15px;
-    padding: 2rem;
+    background: rgba(10, 10, 10, 0.75);
+    backdrop-filter: blur(5px);
+    border-radius: 10px;
+    padding: 2.5rem;
     margin-top: 4rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    border: 2px solid #333;
+    box-shadow: 0 0 25px rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.2);
+    transition: all 0.3s ease;
 }
 
 .ranking-title {
     font-family: 'Playfair Display', serif;
-    font-size: 2.8rem;
+    font-size: 2.6rem;
     text-align: center;
     color: #FFD700;
     margin-top: 0;
     margin-bottom: 2rem;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.5), 1px 1px 2px black;
 }
 
 .ranking-table {
     width: 100%;
     border-collapse: collapse;
-    color: #eee;
-    font-size: 1.1rem;
+    color: #ddd;
+    font-size: 1rem;
 }
 
 .ranking-table thead th {
-    background-color: rgba(50, 50, 50, 0.7);
+    background-color: transparent;
     color: #FFC107;
     font-weight: bold;
     padding: 1rem;
     text-align: left;
     border-bottom: 2px solid #FFC107;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 3px rgba(0,0,0,0.5);
 }
 
 .ranking-table tbody td {
     padding: 1rem;
     text-align: left;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 193, 7, 0.15);
 }
 
 .ranking-table tbody tr:last-child td {
     border-bottom: none;
 }
 
-.ranking-table tbody tr:nth-child(odd) {
-    background-color: rgba(20, 20, 20, 0.5);
+.ranking-table tbody tr {
+    background-color: transparent;
+    transition: background-color 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.ranking-table tbody tr:hover {
+    background-color: rgba(255, 193, 7, 0.07);
+    transform: scale(1.01);
 }
 
 .ranking-table td:first-child {
-    text-align: center;
-    font-size: 1.3rem;
-    font-weight: bold;
-    color: #f0f0f0;
+    font-weight: normal;
+    color: #aaa;
 }
 
 .ranking-table td:nth-child(3) {
     color: #FFD700;
+    font-weight: bold;
+}
+
+.ranking-table td:nth-child(4) {
+    color: #ccc;
+}
+
+.resultado-ganaste {
+    color: #28a745;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+}
+
+.resultado-perdiste {
+    color: #DC1B53;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(220, 27, 83, 0.5);
+}
+
+.resultado-empate {
+    color: #888;
     font-weight: bold;
 }
