@@ -8,6 +8,7 @@ import mysql.connector
 import random
 from datetime import datetime
 import multiprocessing
+import webbrowser
 
 import blackjack
 import ruleta
@@ -108,7 +109,7 @@ class RoundButton(tk.Canvas):
         self.create_arc(w - 2*r, h - 2*r, w, h, start=270, extent=90, fill=bc, outline="", tags="button")
         inner_r = r - bw if r > bw else 0
         x0, y0, x1, y1 = bw, bw, w - bw, h - bw
-        if x1 > x0 and y1 > y0:
+        if x1 > x0 and y1 > 0:
             self.create_rectangle(x0 + inner_r, y0, x1 - inner_r, y1, fill=color, outline="", tags="button")
             self.create_rectangle(x0, y0 + inner_r, x1, y1 - inner_r, fill=color, outline="", tags="button")
             self.create_arc(x0, y0, x0 + 2*inner_r, y0 + 2*inner_r, start=90, extent=90, fill=color, outline="", tags="button")
@@ -777,7 +778,7 @@ class CasinoApp:
             button.config(text='🔐')
         else:
             entry.config(show='*')
-            button.config(text='')
+            button.config(text='👁️')
 
     def on_closing(self):
         if messagebox.askyesno("Salir", "¿Está seguro de que desea salir del casino?"):
@@ -879,7 +880,7 @@ class CasinoApp:
         pass_frame = tk.Frame(form_frame, bg=c["frame_bg"])
         password_entry = tk.Entry(pass_frame, font=field_font, width=22, show="*")
         password_entry.pack(side="left", fill="x", expand=True)
-        toggle_btn = tk.Button(pass_frame, text="🔓", font=("Arial", 10), relief="flat", bg=c["frame_bg"], fg=c["fg"], borderwidth=0, highlightthickness=0)
+        toggle_btn = tk.Button(pass_frame, text="👁️", font=("Arial", 10), relief="flat", bg=c["frame_bg"], fg=c["fg"], borderwidth=0, highlightthickness=0)
         toggle_btn.config(command=lambda e=password_entry, b=toggle_btn: self._toggle_password_visibility(e, b))
         toggle_btn.pack(side="left", padx=(5,0))
         pass_frame.grid(row=row_num, column=1, columnspan=2, sticky="we", pady=4, padx=5)
@@ -998,7 +999,7 @@ class CasinoApp:
         pass_frame.grid(row=2, column=1, pady=5, sticky="ew")
         password_entry = tk.Entry(pass_frame, font=("Arial", 16), show="*")
         password_entry.pack(side="left", fill="x", expand=True, ipady=4)
-        toggle_btn = tk.Button(pass_frame, text="🔓", font=("Arial", 10), relief="flat", bg=c["frame_bg"], fg=c["fg"], borderwidth=0, highlightthickness=0)
+        toggle_btn = tk.Button(pass_frame, text="👁️", font=("Arial", 10), relief="flat", bg=c["frame_bg"], fg=c["fg"], borderwidth=0, highlightthickness=0)
         toggle_btn.config(command=lambda e=password_entry, b=toggle_btn: self._toggle_password_visibility(e, b))
         toggle_btn.pack(side="left", padx=(5,0), fill="y")
         
@@ -1040,6 +1041,9 @@ class CasinoApp:
             for i, user_data in enumerate(top_10_data, 1):
                 saldo_formateado = f"${user_data['saldo']:,.0f}".replace(",", ".")
                 self.ranking_tree.insert("", "end", values=(f"{i}", user_data['usuario'], saldo_formateado))
+
+    def open_website(self):
+        webbrowser.open("http://192.168.1.139/Casino_Local/")
 
     def show_main_menu(self):
         if self.after_id: self.root.after_cancel(self.after_id)
@@ -1089,6 +1093,10 @@ class CasinoApp:
         btn_candy = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.open_admin_login, "🍬 Canjear Dulces", sidebar_btn_font, text_color=c["fg"])
         btn_candy.pack(pady=10)
         self.sidebar_buttons.append(btn_candy)
+
+        btn_learn = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["gold"], c["sidebar_bg"], self.open_website, "🎓 Aprende a jugar", sidebar_btn_font, text_color=c["bg"])
+        btn_learn.pack(pady=10)
+        self.sidebar_buttons.append(btn_learn)
 
         btn_music = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_song_selection_window, "🎵 Cambiar Música", sidebar_btn_font, text_color=c["fg"])
         btn_music.pack(pady=10)
@@ -1190,7 +1198,7 @@ class CasinoApp:
         RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Blackjack"), "🎲 Jugar Blackjack", game_btn_font, text_color=c["fg"]).pack(pady=12)
         RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Ruleta"), "🎡 Jugar Ruleta", game_btn_font, text_color=c["fg"]).pack(pady=12)
         RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Tragamonedas"), "🎰 Jugar Tragamonedas", game_btn_font, text_color=c["fg"]).pack(pady=12)
-        RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Coinflip"), "🪙 Jugar Coinflip", game_btn_font, text_color=c["fg"]).pack(pady=12)
+        RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Coinflip"), "🪙 Jugar Cara o sello", game_btn_font, text_color=c["fg"]).pack(pady=12)
 
         balance_frame = tk.Frame(self.center_content_frame, bg=c["frame_bg"])
         balance_frame.pack(pady=(30, 30))
@@ -1550,6 +1558,9 @@ class CasinoApp:
         game_process = multiprocessing.Process(target=launch_game_process, args=(game_name,))
         game_process.start()
         self.active_processes.append(game_process)
+        
+        # <-- MODIFICADO: Vuelve al menú de selección de juegos INMEDIATAMENTE después de lanzar el juego.
+        self._build_game_selection_widgets()
 
         self.root.after(100, self._check_game_completion, game_process, game_name, bet_placed)
 
@@ -1609,9 +1620,12 @@ class CasinoApp:
         finally:
             if not self.is_muted:
                 pygame.mixer.music.set_volume(self.music_volume)
+            
             self.refresh_balance_display()
+
             if final_result_msg:
-                self.root.after(100, lambda: messagebox.showinfo("Resultado", final_result_msg))
+                # <-- MODIFICADO: Solo muestra el mensaje. El regreso al menú ya se hizo antes.
+                messagebox.showinfo("Resultado", final_result_msg)
 
 
     def logout(self):
