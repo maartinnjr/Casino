@@ -6,18 +6,16 @@ import pygame
 from PIL import Image, ImageTk, ImageOps, ImageEnhance
 import mysql.connector
 import random
-
 from datetime import datetime
+import multiprocessing
 
-# --- IMPORTACIONES DE JUEGOS ---
 import blackjack
 import ruleta
 import tragamonedas
 import coinflip
 
-# --- CONFIGURACIÓN DE LA CONEXIÓN A LA BASE DE DATOS MYSQL ---
 db_config = {
-    'host': '127.0.0.1',
+    'host': '192.168.1.139',
     'user': 'Casino',
     'password': 'casino123',
     'database': 'casinodb',
@@ -27,7 +25,6 @@ db_config = {
 db_connection = None
 
 def get_db_connection():
-    """Establece y devuelve una conexión a la base de datos."""
     global db_connection
     try:
         if db_connection is None or not db_connection.is_connected():
@@ -40,11 +37,9 @@ def get_db_connection():
         sys.exit()
         return None
 
-# --- MAPA DE JUEGOS ---
 GAME_ID_MAP = {"Blackjack": 1, "Ruleta": 2, "Tragamonedas": 3, "Coinflip": 4}
 
 def resource_path(relative_path):
-    """ Obtiene la ruta absoluta al recurso, funciona para desarrollo y para PyInstaller """
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -53,7 +48,6 @@ def resource_path(relative_path):
 
 SALDO_INICIAL = 2000
 
-# --- PALETA DE COLORES ---
 ELEGANT_COLORS = {
     "dark": {
         "bg": "#1A1A1A", "fg": "#FFFFFF", "btn_bg": "#A62639", "btn_active": "#C43B4E",
@@ -148,7 +142,6 @@ class RoundButton(tk.Canvas):
     def _on_leave(self, event):
         self._redraw(self.color)
 
-# --- FUNCIONES DE BASE DE DATOS ---
 def get_dropdown_data(table_name):
     conn = get_db_connection()
     if not conn: return []
@@ -267,6 +260,20 @@ def get_all_users_for_admin():
     finally:
         cursor.close()
 
+def get_all_users_for_login():
+    conn = get_db_connection()
+    if not conn: return []
+    cursor = conn.cursor(dictionary=True)
+    try:
+        query = "SELECT usuario, rut FROM usuarios ORDER BY usuario"
+        cursor.execute(query)
+        return cursor.fetchall()
+    except Exception as e:
+        print(f"Error al obtener usuarios para login: {e}")
+        return []
+    finally:
+        cursor.close()
+
 def get_user_balance(user_id):
     conn = get_db_connection()
     if not conn: return None
@@ -298,7 +305,6 @@ def get_top_10_ranking():
         cursor.close()
 
 def get_all_other_users(current_user_id):
-    """Obtiene todos los usuarios excepto el actual para la lista de transferencia."""
     conn = get_db_connection()
     if not conn: return []
     cursor = conn.cursor(dictionary=True)
@@ -367,16 +373,12 @@ def perform_candy_exchange(admin_id, user_id, saldo_cost, dulces_gain):
         cursor.close()
 
 def perform_transfer(sender_id, recipient_id, amount, password):
-    """Realiza la transferencia de saldo entre usuarios."""
     conn = get_db_connection()
     if not conn: return False, "Sin conexión a la base de datos."
     cursor = conn.cursor(dictionary=True)
     try:
-        # --- INICIO: CORRECCIÓN DE TRANSACCIÓN ---
-        # Asegurarse de que no hay una transacción activa antes de empezar
         if conn.in_transaction:
             conn.rollback()
-        # --- FIN: CORRECCIÓN DE TRANSACCIÓN ---
 
         conn.start_transaction()
 
@@ -405,25 +407,39 @@ def perform_transfer(sender_id, recipient_id, amount, password):
     finally:
         cursor.close()
 
+def launch_game_process(game_name):
+    if game_name == "Tragamonedas":
+        root = tk.Tk()
+        tragamonedas.SlotMachineController(root)
+        root.mainloop()
+    elif game_name == "Ruleta":
+        ruleta.juego_ruleta()
+    elif game_name == "Blackjack":
+        blackjack.juego_blackjack()
+    elif game_name == "Coinflip":
+        coinflip.juego_coinflip()
+
 class CasinoApp:
     def __init__(self, root):
         self.root = root
+        self.active_processes = []
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
-        pygame.mixer.init()
+        pygame.init()
+        self.SONG_END_EVENT = pygame.USEREVENT + 1
+        pygame.mixer.music.set_endevent(self.SONG_END_EVENT)
+        
         self.song_list = []
         self.current_song_index = 0
         self.is_muted = False
         self.music_volume = 0.5
         
-        self.is_paused_for_game = False
-        self.song_paused_pos = 0
         self.user_is_dragging_slider = False
         self.first_launch = True
         self.song_start_time = 0
         
         self.song_length = 0
         self.song_update_job = None
-        self.playlist_check_job = None
         self.song_progress_slider = None
         self.time_label_current = None
         self.time_label_total = None
@@ -432,14 +448,14 @@ class CasinoApp:
         self.main_menu_mute_button = None
         
         self.load_and_play_music()
-        self.check_for_next_song()
+        self.check_pygame_events()
 
         self.current_mode = "dark"
         self.apply_theme()
         self.root.title("🎰 Casino Virtual 🎰")
         
-        w, h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        self.root.geometry(f"{w}x{h}+0+0")
+        self.w, self.h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        self.root.geometry(f"{self.w}x{self.h}+0+0")
         self.root.attributes('-fullscreen', True)
         self.root.bind("<F11>", lambda e: self.root.attributes("-fullscreen", not self.root.attributes("-fullscreen")))
         self.root.bind("<Escape>", lambda e: self.root.attributes("-fullscreen", False))
@@ -452,17 +468,48 @@ class CasinoApp:
         self.logo_casino_img = None
         self.logo_empresa_img = None
         
-        self.slide_pil_images = []
-        self.slide_tk_images = []
-        self.dark_slide_tk_images = []
+        self.cached_slide_images = {}
+        self.cached_dark_slide_images = {}
         self.current_slide_index = 0
         self.slide_label = None
         self.main_menu_bg_label = None
         self.after_id = None
-        self.faded_image = None
         self.center_content_frame = None
 
+        self.preload_assets()
         self.show_start_screen()
+
+    def preload_assets(self):
+        slide_size = (int(self.w * 0.55), self.h)
+        main_menu_size = (self.w, self.h)
+        self._load_and_cache_slides(slide_size)
+        self._load_and_cache_slides(main_menu_size, darken=True)
+
+    def _load_and_cache_slides(self, size, darken=False):
+        cache = self.cached_dark_slide_images if darken else self.cached_slide_images
+        if size in cache:
+            return
+
+        cache[size] = []
+        slide_names = [f"slide{i}.png" for i in range(1, 6)]
+        
+        for name in slide_names:
+            try:
+                img = Image.open(resource_path(name)).convert("RGBA")
+                img_fitted = ImageOps.fit(img, size, Image.LANCZOS)
+                
+                if darken:
+                    enhancer = ImageEnhance.Brightness(img_fitted)
+                    img_fitted = enhancer.enhance(0.3)
+                
+                cache[size].append(ImageTk.PhotoImage(img_fitted))
+
+            except Exception as e:
+                print(f"Error al cargar y cachear slide '{name}': {e}")
+        
+        if not cache[size]:
+             fallback_img = Image.new('RGBA', size, color='black')
+             cache[size].append(ImageTk.PhotoImage(fallback_img))
 
     def _format_time(self, seconds):
         if seconds is None or seconds < 0:
@@ -512,16 +559,19 @@ class CasinoApp:
             print(f"Error al cargar o reproducir la canción: {e}")
             self.song_length = 0
 
-    def check_for_next_song(self):
-        if not self.user_is_dragging_slider and not self.is_paused_for_game and self.song_list:
-            if not pygame.mixer.music.get_busy():
-                self.current_song_index = (self.current_song_index + 1) % len(self.song_list)
-                self.play_song(self.current_song_index)
-        
-        self.playlist_check_job = self.root.after(1000, self.check_for_next_song)
+    def check_pygame_events(self):
+        for event in pygame.event.get():
+            if event.type == self.SONG_END_EVENT:
+                if not self.user_is_dragging_slider:
+                    next_index = self.current_song_index
+                    if len(self.song_list) > 1:
+                        while next_index == self.current_song_index:
+                            next_index = random.randint(0, len(self.song_list) - 1)
+                    self.play_song(next_index)
+        self.root.after(100, self.check_pygame_events)
 
     def set_volume(self, val):
-        self.music_volume = float(val)
+        self.music_volume = float(val) / 100.0
         if not self.is_muted:
             pygame.mixer.music.set_volume(self.music_volume)
 
@@ -639,10 +689,10 @@ class CasinoApp:
             listbox.selection_set(self.current_song_index)
 
         tk.Label(frame, text="Volumen", font=("Arial", 12, "bold"), bg=c["frame_bg"], fg=c["fg"]).pack(pady=(15, 5))
-        volume_slider = tk.Scale(frame, from_=0, to=1, resolution=0.01, orient="horizontal",
+        volume_slider = tk.Scale(frame, from_=0, to=100, orient="horizontal",
                                  command=self.set_volume, bg=c["frame_bg"], fg=c["fg"],
                                  troughcolor=c["neutral"], highlightthickness=0, length=250)
-        volume_slider.set(self.music_volume)
+        volume_slider.set(self.music_volume * 100)
         volume_slider.pack(fill="x", pady=5)
 
         def on_select():
@@ -676,73 +726,36 @@ class CasinoApp:
             next_index = (index + 1) % len(colors)
             self.root.after(600, lambda: self.animate_title(widget, colors, next_index))
 
-    def load_slides(self, size, darken=False, factor=0.3):
-        self.slide_pil_images = []
-        self.slide_tk_images = []
-        self.dark_slide_tk_images = []
-        slide_names = [f"slide{i}.png" for i in range(1, 6)]
-        
-        for name in slide_names:
-            try:
-                img = Image.open(resource_path(name)).convert("RGBA")
-                img_fitted = ImageOps.fit(img, size, Image.LANCZOS)
-                self.slide_pil_images.append(img_fitted)
-                self.slide_tk_images.append(ImageTk.PhotoImage(img_fitted))
-                
-                enhancer = ImageEnhance.Brightness(img_fitted)
-                dark_img = enhancer.enhance(factor)
-                self.dark_slide_tk_images.append(ImageTk.PhotoImage(dark_img))
-
-            except Exception as e:
-                print(f"Error al cargar slide '{name}': {e}")
-        
-        if not self.slide_pil_images:
-             fallback_img = Image.new('RGBA', size, color='black')
-             self.slide_pil_images.append(fallback_img)
-             self.slide_tk_images.append(ImageTk.PhotoImage(fallback_img))
-             self.dark_slide_tk_images.append(ImageTk.PhotoImage(fallback_img))
-
-    def start_slideshow(self, right_frame):
+    def start_slideshow(self, right_frame, size):
         if self.after_id: self.root.after_cancel(self.after_id)
         
-        w, h = int(self.root.winfo_width() * 0.55), self.root.winfo_height()
-        if w <= 1 or h <= 1:
-            self.after_id = self.root.after(100, lambda: self.start_slideshow(right_frame))
+        slide_images = self.cached_slide_images.get(size)
+        if not slide_images:
+            print(f"No se encontraron imágenes cacheadas para el tamaño {size}")
             return
-            
-        self.load_slides((w, h))
-        if not self.slide_tk_images: return
 
         if self.slide_label is None or not self.slide_label.winfo_exists():
             self.slide_label = tk.Label(right_frame, bg=COLORES[self.current_mode]["bg"])
             self.slide_label.pack(fill="both", expand=True)
             
         self.current_slide_index = 0
-        self.slide_label.config(image=self.slide_tk_images[0])
-        self.after_id = self.root.after(5000, self.change_slide)
+        self.slide_label.config(image=slide_images[0])
+        self.after_id = self.root.after(5000, lambda: self.change_slide(size=size))
 
-    def change_slide(self, for_main_menu=False):
-        if len(self.slide_pil_images) < 2: return
+    def change_slide(self, for_main_menu=False, size=None):
+        if self.after_id:
+            self.root.after_cancel(self.after_id)
 
-        from_idx = self.current_slide_index
-        self.current_slide_index = (self.current_slide_index + 1) % len(self.slide_pil_images)
+        cache = self.cached_dark_slide_images.get(size) if for_main_menu else self.cached_slide_images.get(size)
+        if not cache or len(cache) < 2: return
+
+        self.current_slide_index = (self.current_slide_index + 1) % len(cache)
         
-        if for_main_menu:
-            if self.main_menu_bg_label and self.main_menu_bg_label.winfo_exists():
-                self.main_menu_bg_label.config(image=self.dark_slide_tk_images[self.current_slide_index])
-            self.after_id = self.root.after(5000, lambda: self.change_slide(for_main_menu=True))
-        else:
-            self._animate_fade(self.slide_pil_images[from_idx], self.slide_pil_images[self.current_slide_index])
-
-    def _animate_fade(self, from_img, to_img, step=0):
-        if step > 20:
-            self.after_id = self.root.after(4500, self.change_slide)
-            return
-        blended_img = Image.blend(from_img, to_img, step / 20.0)
-        self.faded_image = ImageTk.PhotoImage(blended_img)
-        if self.slide_label.winfo_exists():
-            self.slide_label.config(image=self.faded_image)
-            self.root.after(25, lambda: self._animate_fade(from_img, to_img, step + 1))
+        label_to_update = self.main_menu_bg_label if for_main_menu else self.slide_label
+        if label_to_update and label_to_update.winfo_exists():
+            label_to_update.config(image=cache[self.current_slide_index])
+        
+        self.after_id = self.root.after(5000, lambda: self.change_slide(for_main_menu=for_main_menu, size=size))
 
     def _create_split_layout(self):
         self.clear_window()
@@ -753,7 +766,9 @@ class CasinoApp:
         left_frame.place(relx=0, rely=0, relwidth=0.45, relheight=1)
         right_frame = tk.Frame(main_frame, bg=c["bg"])
         right_frame.place(relx=0.45, rely=0, relwidth=0.55, relheight=1)
-        self.start_slideshow(right_frame)
+        
+        slide_size = (int(self.w * 0.55), self.h)
+        self.start_slideshow(right_frame, slide_size)
         return left_frame, main_frame
 
     def _toggle_password_visibility(self, entry, button):
@@ -762,11 +777,15 @@ class CasinoApp:
             button.config(text='🔐')
         else:
             entry.config(show='*')
-            button.config(text='�')
+            button.config(text='')
 
-    def confirm_quit(self):
-        if messagebox.askyesno("Confirmar Salida", "¿Está seguro de que desea salir del casino?"):
-            self.root.quit()
+    def on_closing(self):
+        if messagebox.askyesno("Salir", "¿Está seguro de que desea salir del casino?"):
+            for p in self.active_processes:
+                if p.is_alive():
+                    p.terminate()
+            self.root.destroy()
+            sys.exit()
 
     def show_start_screen(self):
         left_frame, main_frame = self._create_split_layout()
@@ -792,7 +811,7 @@ class CasinoApp:
         btn_w, btn_h, btn_radius, btn_font = 300, 60, 6, ("Arial", 18, "bold")
         RoundButton(button_frame, btn_w, btn_h, btn_radius, c["btn_bg"], c["bg"], self.show_register_screen, "📝 Registrarse", btn_font).pack(pady=10)
         RoundButton(button_frame, btn_w, btn_h, btn_radius, c["gold"], c["bg"], self.show_login_screen, "🔐 Iniciar Sesión", btn_font).pack(pady=10)
-        RoundButton(button_frame, btn_w, btn_h, btn_radius, c["danger"], c["bg"], self.confirm_quit, "❌ Salir", btn_font).pack(pady=10)
+        RoundButton(button_frame, btn_w, btn_h, btn_radius, c["danger"], c["bg"], self.on_closing, "❌ Salir", btn_font).pack(pady=10)
 
         icon_font = ("Arial", 24)
         icon_bg = c["bg"]
@@ -866,7 +885,7 @@ class CasinoApp:
         pass_frame.grid(row=row_num, column=1, columnspan=2, sticky="we", pady=4, padx=5)
         entries["Contraseña"] = password_entry
         row_num += 1
-
+        
         tk.Label(form_frame, text="RUT:", font=label_font, bg=c["frame_bg"], fg=c["fg"]).grid(row=row_num, column=0, sticky="w", pady=4, padx=5)
         rut_entry = tk.Entry(form_frame, font=field_font, width=25)
         rut_entry.grid(row=row_num, column=1, columnspan=2, sticky="we", pady=4, padx=5)
@@ -954,25 +973,39 @@ class CasinoApp:
         form_frame = tk.Frame(center_frame, bg=c["frame_bg"], bd=5, relief="ridge", padx=30, pady=25)
         form_frame.pack(pady=15)
         
-        tk.Label(form_frame, text="Usuario:", font=("Arial", 16), bg=c["frame_bg"], fg=c["fg"]).pack(pady=(8, 4))
-        user_entry = tk.Entry(form_frame, font=("Arial", 16), width=25)
-        user_entry.pack(pady=(0, 8), ipady=4)
+        users_data = get_all_users_for_login()
+        self.user_rut_map = {user['usuario']: user['rut'] for user in users_data}
+        user_list = list(self.user_rut_map.keys())
+
+        tk.Label(form_frame, text="Usuario:", font=("Arial", 16), bg=c["frame_bg"], fg=c["fg"]).grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        user_combo = ttk.Combobox(form_frame, values=user_list, font=("Arial", 16), state="readonly")
+        user_combo.grid(row=0, column=1, pady=5, ipady=4, sticky="ew")
+
+        tk.Label(form_frame, text="RUT:", font=("Arial", 16), bg=c["frame_bg"], fg=c["fg"]).grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        rut_entry = tk.Entry(form_frame, font=("Arial", 16))
+        rut_entry.grid(row=1, column=1, pady=5, ipady=4, sticky="ew")
         
-        tk.Label(form_frame, text="Contraseña:", font=("Arial", 16), bg=c["frame_bg"], fg=c["fg"]).pack(pady=4)
+        def on_user_select(event):
+            selected_user = user_combo.get()
+            rut = self.user_rut_map.get(selected_user, "")
+            rut_entry.delete(0, tk.END)
+            rut_entry.insert(0, rut)
+
+        user_combo.bind("<<ComboboxSelected>>", on_user_select)
+        
+        tk.Label(form_frame, text="Contraseña:", font=("Arial", 16), bg=c["frame_bg"], fg=c["fg"]).grid(row=2, column=0, sticky="w", padx=5, pady=5)
         pass_frame = tk.Frame(form_frame, bg=c["frame_bg"])
-        password_entry = tk.Entry(pass_frame, font=("Arial", 16), show="*", width=22)
-        password_entry.pack(side="left", ipady=4)
+        pass_frame.grid(row=2, column=1, pady=5, sticky="ew")
+        password_entry = tk.Entry(pass_frame, font=("Arial", 16), show="*")
+        password_entry.pack(side="left", fill="x", expand=True, ipady=4)
         toggle_btn = tk.Button(pass_frame, text="🔓", font=("Arial", 10), relief="flat", bg=c["frame_bg"], fg=c["fg"], borderwidth=0, highlightthickness=0)
         toggle_btn.config(command=lambda e=password_entry, b=toggle_btn: self._toggle_password_visibility(e, b))
         toggle_btn.pack(side="left", padx=(5,0), fill="y")
-        pass_frame.pack(pady=(0, 8))
-
-        tk.Label(form_frame, text="RUT:", font=("Arial", 16), bg=c["frame_bg"], fg=c["fg"]).pack(pady=4)
-        rut_entry = tk.Entry(form_frame, font=("Arial", 16), width=25)
-        rut_entry.pack(pady=(0, 12), ipady=4)
+        
+        form_frame.grid_columnconfigure(1, weight=1, uniform="group1")
 
         def login():
-            user = user_entry.get()
+            user = user_combo.get()
             password = password_entry.get()
             rut = rut_entry.get()
             if not user or not password or not rut:
@@ -997,6 +1030,7 @@ class CasinoApp:
             if latest_balance is not None:
                 self.current_balance = latest_balance
                 self.balance_label.config(text=f"Saldo: ${self.current_balance:,.0f}".replace(",", "."))
+        self.refresh_ranking_display()
 
     def refresh_ranking_display(self):
         if hasattr(self, 'ranking_tree') and self.ranking_tree.winfo_exists():
@@ -1017,15 +1051,15 @@ class CasinoApp:
         main_container = tk.Frame(self.root, bg=c["bg"])
         main_container.pack(fill="both", expand=True)
 
-        w, h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        self.load_slides((w, h), darken=True)
+        main_menu_size = (self.w, self.h)
+        dark_slides = self.cached_dark_slide_images.get(main_menu_size, [])
         
         self.main_menu_bg_label = tk.Label(main_container, bg=c["bg"])
         self.main_menu_bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         
-        if self.dark_slide_tk_images:
-            self.main_menu_bg_label.config(image=self.dark_slide_tk_images[0])
-            self.after_id = self.root.after(5000, lambda: self.change_slide(for_main_menu=True))
+        if dark_slides:
+            self.main_menu_bg_label.config(image=dark_slides[0])
+            self.after_id = self.root.after(5000, lambda: self.change_slide(for_main_menu=True, size=main_menu_size))
 
         sidebar_frame = tk.Frame(main_container, bg=c["sidebar_bg"], width=280, relief="raised", bd=2)
         sidebar_frame.pack(side="left", fill="y", padx=0, pady=0)
@@ -1038,20 +1072,38 @@ class CasinoApp:
 
         sidebar_btn_font = ("Arial", 14, "bold")
         btn_w, btn_h = 220, 55
-        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_transfer_window, "💸 Transferir Saldo", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_ranking, "🏆 Ver Ranking", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_user_history, "📜 Ver Historial", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
-        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.open_admin_login, "🍬 Canjear Dulces", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        self.sidebar_buttons = []
+        
+        btn_transfer = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_transfer_window, "💸 Transferir Saldo", sidebar_btn_font, text_color=c["fg"])
+        btn_transfer.pack(pady=10)
+        self.sidebar_buttons.append(btn_transfer)
 
-        RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_song_selection_window, "🎵 Cambiar Música", sidebar_btn_font, text_color=c["fg"]).pack(pady=10)
+        btn_ranking = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_ranking, "🏆 Ver Ranking", sidebar_btn_font, text_color=c["fg"])
+        btn_ranking.pack(pady=10)
+        self.sidebar_buttons.append(btn_ranking)
+
+        btn_history = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_user_history, "📜 Ver Historial", sidebar_btn_font, text_color=c["fg"])
+        btn_history.pack(pady=10)
+        self.sidebar_buttons.append(btn_history)
+
+        btn_candy = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.open_admin_login, "🍬 Canjear Dulces", sidebar_btn_font, text_color=c["fg"])
+        btn_candy.pack(pady=10)
+        self.sidebar_buttons.append(btn_candy)
+
+        btn_music = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["light_blue"], c["sidebar_bg"], self.show_song_selection_window, "🎵 Cambiar Música", sidebar_btn_font, text_color=c["fg"])
+        btn_music.pack(pady=10)
+        self.sidebar_buttons.append(btn_music)
         
         mute_button_text = "Activar Sonido" if self.is_muted else "Desactivar Sonido"
         self.main_menu_mute_button = RoundButton(top_buttons_frame, btn_w, btn_h, 6, c["neutral"], c["sidebar_bg"], self.toggle_mute, mute_button_text, sidebar_btn_font, text_color=c["fg"])
         self.main_menu_mute_button.pack(pady=10)
+        self.sidebar_buttons.append(self.main_menu_mute_button)
 
         bottom_button_frame = tk.Frame(sidebar_frame, bg=c["sidebar_bg"])
         bottom_button_frame.pack(side="bottom", pady=25, padx=20, fill="x")
-        RoundButton(bottom_button_frame, 220, 55, 6, c["danger"], c["sidebar_bg"], self.logout, "🚪 Cerrar Sesión", sidebar_btn_font).pack(pady=10)
+        btn_logout = RoundButton(bottom_button_frame, 220, 55, 6, c["danger"], c["sidebar_bg"], self.logout, "🚪 Cerrar Sesión", sidebar_btn_font)
+        btn_logout.pack(pady=10)
+        self.sidebar_buttons.append(btn_logout)
 
         right_sidebar_frame = tk.Frame(main_container, bg=c["sidebar_bg"], width=380, relief="raised", bd=2)
         right_sidebar_frame.pack(side="right", fill="y", padx=0, pady=0)
@@ -1113,7 +1165,18 @@ class CasinoApp:
 
         self.center_content_frame = tk.Frame(center_wrapper, bg=c["frame_bg"], bd=5, relief="sunken")
         self.center_content_frame.pack(padx=20, pady=20)
+        
+        self._build_game_selection_widgets()
 
+        self.refresh_balance_display()
+
+    def _build_game_selection_widgets(self):
+        for widget in self.center_content_frame.winfo_children():
+            widget.destroy()
+
+        c = COLORES[self.current_mode]
+        rainbow_colors = ["#FFD700", "#FFFFFF", "#3498db", "#FF5733", "#33FF57", "#C70039", "#900C3F"]
+        
         title = tk.Label(self.center_content_frame, text=f"🎰 Bienvenido/a, {self.current_username} 🎰", font=("Helvetica", 30, "bold"), bg=c["frame_bg"], fg=c["gold"])
         title.pack(pady=(30, 20), padx=50)
         self.animate_title(title, rainbow_colors)
@@ -1129,7 +1192,6 @@ class CasinoApp:
         RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Tragamonedas"), "🎰 Jugar Tragamonedas", game_btn_font, text_color=c["fg"]).pack(pady=12)
         RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Coinflip"), "🪙 Jugar Coinflip", game_btn_font, text_color=c["fg"]).pack(pady=12)
 
-        
         balance_frame = tk.Frame(self.center_content_frame, bg=c["frame_bg"])
         balance_frame.pack(pady=(30, 30))
 
@@ -1138,9 +1200,7 @@ class CasinoApp:
 
         self.balance_label = tk.Label(balance_frame, text=f"Saldo: ${self.current_balance:,.0f}".replace(",", "."), font=("Arial", 24, "bold"), fg=c["fg"], bg=c["frame_bg"])
         self.balance_label.pack(side="left")
-        
         self.refresh_balance_display()
-        self.refresh_ranking_display()
 
     def show_transfer_window(self):
         c = COLORES[self.current_mode]
@@ -1194,8 +1254,7 @@ class CasinoApp:
             
             recipient_id = self.users_map.get(recipient_name)
             
-            # --- INICIO: CORRECCIÓN DE TRANSFERENCIA ---
-            self.refresh_balance_display() # Actualiza el saldo antes de la confirmación
+            self.refresh_balance_display()
             is_sure = messagebox.askyesno(
                 "Confirmar Transferencia", 
                 f"¿Está seguro que desea transferir ${amount:,.0f} a {recipient_name}?".replace(",", "."),
@@ -1211,7 +1270,6 @@ class CasinoApp:
                     transfer_window.destroy()
                 else:
                     messagebox.showerror("Error", message, parent=transfer_window)
-            # --- FIN: CORRECCIÓN DE TRANSFERENCIA ---
 
         tk.Button(frame, text="Confirmar Transferencia", command=confirm_transfer, font=("Arial", 14, "bold"), bg=c["gold"], fg=c["bg"]).grid(row=4, column=0, columnspan=2, pady=20, ipadx=10, ipady=5)
 
@@ -1473,50 +1531,49 @@ class CasinoApp:
             tk.Button(other_frame, text="Confirmar", command=confirm_other, font=("Helvetica", 12, "bold"), bg=c["btn_bg"], fg=c["fg"]).pack(pady=10)
 
         RoundButton(self.center_content_frame, btn_w, btn_h, btn_radius, c["neutral"], c["frame_bg"], on_other_bet_click, "Otro monto", btn_font).pack(pady=8)
-        RoundButton(self.center_content_frame, btn_w, btn_h, btn_radius, c["neutral"], c["frame_bg"], self.show_main_menu, "⬅ Volver", btn_font).pack(pady=20)
+        RoundButton(self.center_content_frame, btn_w, btn_h, btn_radius, c["neutral"], c["frame_bg"], self._build_game_selection_widgets, "⬅ Volver", btn_font).pack(pady=20)
 
-    def _execute_game_logic(self, game, bet_placed):
-        if pygame.mixer.music.get_busy():
-            self.song_paused_pos = self.song_start_time + (pygame.mixer.music.get_pos() / 1000.0)
-            pygame.mixer.music.pause()
-            self.is_paused_for_game = True
+    def _execute_game_logic(self, game_name, bet_placed):
+        if pygame.mixer.music.get_busy() and not self.is_muted:
+            pygame.mixer.music.set_volume(0.3)
 
-        self.root.withdraw()
-        final_result_msg = None
         bet_txt_path = resource_path("apuesta.txt")
-        result_txt_path = resource_path("resultado.txt")
-        
-        try:
-            open(bet_txt_path, "w").close() 
-            open(result_txt_path, "w").close()
-        except IOError as e:
-            messagebox.showerror("Error de Archivo", f"No se pudieron preparar archivos temporales: {e}")
-            self.root.deiconify()
-            self.show_main_menu()
-            return
-
         try:
             with open(bet_txt_path, "w") as f:
                 f.write(str(bet_placed))
-            
-            if game == "Tragamonedas":
-                slot_root = tk.Toplevel()
-                tragamonedas.SlotMachineController(slot_root)
-                self.root.wait_window(slot_root)
-            elif game == "Ruleta": ruleta.juego_ruleta()
-            elif game == "Blackjack": blackjack.juego_blackjack()
-            elif game == "Coinflip": coinflip.juego_coinflip()
-            
+        except IOError as e:
+            messagebox.showerror("Error de Archivo", f"No se pudo escribir la apuesta: {e}")
+            if not self.is_muted:
+                pygame.mixer.music.set_volume(self.music_volume)
+            return
+
+        game_process = multiprocessing.Process(target=launch_game_process, args=(game_name,))
+        game_process.start()
+        self.active_processes.append(game_process)
+
+        self.root.after(100, self._check_game_completion, game_process, game_name, bet_placed)
+
+    def _check_game_completion(self, process, game_name, bet_placed):
+        if process.is_alive():
+            self.root.after(100, self._check_game_completion, process, game_name, bet_placed)
+            return
+        
+        self.active_processes.remove(process)
+        final_result_msg = ""
+        result_txt_path = resource_path("resultado.txt")
+        
+        try:
             if not os.path.exists(result_txt_path):
-                final_result_msg = f"No se encontró el archivo de resultado para {game}."
+                final_result_msg = f"No se encontró el archivo de resultado para {game_name}."
             else:
                 with open(result_txt_path, "r") as f:
                     result_str = f.read().strip()
+                
                 history_result = ""
-                if game in ["Blackjack", "Ruleta", "Coinflip"]:
+                if game_name in ["Blackjack", "Ruleta", "Coinflip"]:
                     history_result = result_str.lower()
                     if history_result == "ganaste":
-                        winnings = bet_placed * 1 
+                        winnings = bet_placed * 1
                         self.current_balance += winnings
                         final_result_msg = f"¡Ganaste ${winnings:,.0f}! 🎉".replace(",", ".")
                     elif history_result == "perdiste":
@@ -1524,12 +1581,12 @@ class CasinoApp:
                         final_result_msg = f"Perdiste ${bet_placed:,.0f} 😞".replace(",", ".")
                     else:
                         final_result_msg = "Empate. No hay cambios en el saldo."
-                elif game == "Tragamonedas":
+                elif game_name == "Tragamonedas":
                     try:
                         gross_winnings = int(result_str)
                         if gross_winnings == -1:
                             final_result_msg = "Juego cancelado, no se realizó ninguna apuesta."
-                            history_result = "empate" # No se registra en el historial
+                            history_result = "empate"
                         else:
                             net_change = gross_winnings - bet_placed
                             self.current_balance += net_change
@@ -1541,34 +1598,21 @@ class CasinoApp:
                                 final_result_msg, history_result = "Recuperaste tu apuesta.", "empate"
                     except (ValueError, TypeError):
                         final_result_msg = f"Resultado inválido de Tragamonedas: '{result_str}'"
-                
-                if history_result and final_result_msg != "Juego cancelado, no se realizó ninguna apuesta.":
-                    add_history(self.current_user_id, bet_placed, history_result, game)
-                update_balance(self.current_user_id, self.current_balance)
-        except Exception as e:
-            messagebox.showerror("Error en el juego", f"Un error ocurrió al ejecutar {game}: {e}")
-        finally:
-            self.root.deiconify()
-            
-            try:
-                if not pygame.mixer.get_init():
-                    pygame.mixer.init()
-                    self.play_song(self.current_song_index, start_time=self.song_paused_pos)
-                elif self.is_paused_for_game:
-                    pygame.mixer.music.unpause()
-            except Exception as e:
-                print(f"Error al reanudar la música: {e}")
-                self.play_song(self.current_song_index)
 
-            self.is_paused_for_game = False
-            self.song_paused_pos = 0
-            
-            self.show_main_menu()
+                if history_result and final_result_msg != "Juego cancelado, no se realizó ninguna apuesta.":
+                    add_history(self.current_user_id, bet_placed, history_result, game_name)
+                update_balance(self.current_user_id, self.current_balance)
+        
+        except Exception as e:
+            messagebox.showerror("Error en el juego", f"Un error ocurrió al procesar el resultado de {game_name}: {e}")
+        
+        finally:
+            if not self.is_muted:
+                pygame.mixer.music.set_volume(self.music_volume)
             self.refresh_balance_display()
-            self.refresh_ranking_display()
-            
             if final_result_msg:
-                messagebox.showinfo("Resultado", final_result_msg)
+                self.root.after(100, lambda: messagebox.showinfo("Resultado", final_result_msg))
+
 
     def logout(self):
         self.current_user_id = None
@@ -1581,14 +1625,15 @@ class CasinoApp:
             self.root.after_cancel(self.after_id)
             self.after_id = None
         
-        if not keep_playlist_job and self.playlist_check_job:
-            self.root.after_cancel(self.playlist_check_job)
-            self.playlist_check_job = None
+        if not keep_playlist_job and hasattr(self, 'playlist_check_job') and self.playlist_check_job:
+             self.root.after_cancel(self.playlist_check_job)
+             self.playlist_check_job = None
             
         for widget in self.root.winfo_children():
             widget.destroy()
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     root = tk.Tk()
     app = CasinoApp(root)
     root.mainloop()
