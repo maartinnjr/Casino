@@ -5,6 +5,7 @@ import sys
 import pygame
 from PIL import Image, ImageTk, ImageOps, ImageEnhance
 import mysql.connector
+import random
 
 from datetime import datetime
 
@@ -16,7 +17,7 @@ import coinflip
 
 # --- CONFIGURACIÓN DE LA CONEXIÓN A LA BASE DE DATOS MYSQL ---
 db_config = {
-    'host': '192.168.1.139',
+    'host': '127.0.0.1',
     'user': 'Casino',
     'password': 'casino123',
     'database': 'casinodb',
@@ -371,25 +372,34 @@ def perform_transfer(sender_id, recipient_id, amount, password):
     if not conn: return False, "Sin conexión a la base de datos."
     cursor = conn.cursor(dictionary=True)
     try:
+        # --- INICIO: CORRECCIÓN DE TRANSACCIÓN ---
+        # Asegurarse de que no hay una transacción activa antes de empezar
+        if conn.in_transaction:
+            conn.rollback()
+        # --- FIN: CORRECCIÓN DE TRANSACCIÓN ---
+
         conn.start_transaction()
 
         cursor.execute("SELECT contrasena, saldo FROM usuarios WHERE id_usuario = %s FOR UPDATE", (sender_id,))
         sender = cursor.fetchone()
+        
         if not sender or sender['contrasena'] != password:
+            conn.rollback()
             return False, "Contraseña incorrecta."
         if sender['saldo'] < amount:
+            conn.rollback()
             return False, "Saldo insuficiente para realizar la transferencia."
 
         cursor.execute("UPDATE usuarios SET saldo = saldo - %s WHERE id_usuario = %s", (amount, sender_id))
         cursor.execute("UPDATE usuarios SET saldo = saldo + %s WHERE id_usuario = %s", (amount, recipient_id))
 
         now = datetime.now()
-        cursor.execute("INSERT INTO transacciones (id_usuario, tipo_transaccion, monto, fecha) VALUES (%s, 'abono', %s, %s)", (sender_id, amount, now))
+        cursor.execute("INSERT INTO transacciones (id_usuario, tipo_transaccion, monto, fecha) VALUES (%s, 'retiro', %s, %s)", (sender_id, amount, now))
         cursor.execute("INSERT INTO transacciones (id_usuario, tipo_transaccion, monto, fecha) VALUES (%s, 'deposito', %s, %s)", (recipient_id, amount, now))
         
         conn.commit()
         return True, f"Transferencia de ${amount:,.0f} realizada con éxito.".replace(",", ".")
-    except Exception as e:
+    except mysql.connector.Error as e:
         conn.rollback()
         return False, f"Error en la transacción: {e}"
     finally:
@@ -397,35 +407,42 @@ def perform_transfer(sender_id, recipient_id, amount, password):
 
 class CasinoApp:
     def __init__(self, root):
-        self.root = root # <- CORRECCIÓN: Asignar root primero.
-        # --- INICIO: SECCIÓN DE MÚSICA MODIFICADA ---
+        self.root = root
+        
         pygame.mixer.init()
         self.song_list = []
         self.current_song_index = 0
         self.is_muted = False
         self.music_volume = 0.5
+        
         self.is_paused_for_game = False
+        self.song_paused_pos = 0
+        self.user_is_dragging_slider = False
+        self.first_launch = True
+        self.song_start_time = 0
+        
         self.song_length = 0
         self.song_update_job = None
+        self.playlist_check_job = None
         self.song_progress_slider = None
-        self.is_seeking = False
-        self.load_and_play_music()
-        
+        self.time_label_current = None
+        self.time_label_total = None
+        self.seek_tooltip_label = None
         self.start_screen_mute_button = None
         self.main_menu_mute_button = None
-        # --- FIN: SECCIÓN DE MÚSICA MODIFICADA ---
+        
+        self.load_and_play_music()
+        self.check_for_next_song()
 
         self.current_mode = "dark"
         self.apply_theme()
         self.root.title("🎰 Casino Virtual 🎰")
         
-        # --- INICIO: CORRECCIÓN DE PANTALLA COMPLETA ---
         w, h = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
         self.root.geometry(f"{w}x{h}+0+0")
         self.root.attributes('-fullscreen', True)
         self.root.bind("<F11>", lambda e: self.root.attributes("-fullscreen", not self.root.attributes("-fullscreen")))
         self.root.bind("<Escape>", lambda e: self.root.attributes("-fullscreen", False))
-        # --- FIN: CORRECCIÓN DE PANTALLA COMPLETA ---
 
         self.current_user_id = None
         self.current_username = None
@@ -447,102 +464,120 @@ class CasinoApp:
 
         self.show_start_screen()
 
-    # --- INICIO: FUNCIONES DE MÚSICA MODIFICADAS Y NUEVAS ---
+    def _format_time(self, seconds):
+        if seconds is None or seconds < 0:
+            return "00:00"
+        mins, secs = divmod(int(seconds), 60)
+        return f"{mins:02d}:{secs:02d}"
+
     def load_and_play_music(self):
         music_folder = resource_path("musica")
         if os.path.isdir(music_folder):
             self.song_list = [f for f in os.listdir(music_folder) if f.endswith(".mp3")]
             if self.song_list:
+                if self.first_launch:
+                    self.current_song_index = random.randint(0, len(self.song_list) - 1)
+                    self.first_launch = False
                 self.play_song(self.current_song_index)
             else:
                 print("No se encontraron archivos .mp3 en la carpeta 'musica'.")
         else:
-            print("La carpeta 'musica' no existe. Por favor, créala y añade canciones.")
+            print("La carpeta 'musica' no existe.")
             os.makedirs(music_folder)
 
-    def play_song(self, index):
+    def play_song(self, index, start_time=0):
         if not self.song_list or not (0 <= index < len(self.song_list)):
             return
         
         self.current_song_index = index
+        self.song_start_time = start_time
         song_path = resource_path(os.path.join("musica", self.song_list[index]))
         
         try:
             pygame.mixer.music.load(song_path)
-            
-            # Obtener la duración de la canción
             sound = pygame.mixer.Sound(song_path)
             self.song_length = sound.get_length()
 
-            if self.is_muted:
-                pygame.mixer.music.set_volume(0)
-            else:
-                pygame.mixer.music.set_volume(self.music_volume)
-            pygame.mixer.music.play(-1)
+            pygame.mixer.music.set_volume(0 if self.is_muted else self.music_volume)
+            pygame.mixer.music.play(0, start=start_time)
             
-            # Iniciar el actualizador de la barra de progreso
+            if self.time_label_total:
+                self.time_label_total.config(text=self._format_time(self.song_length))
+            if self.song_progress_slider:
+                self.song_progress_slider.config(to=self.song_length)
+
             self.start_progress_updater()
             
         except pygame.error as e:
-            print(f"No se pudo cargar la canción '{self.song_list[index]}': {e}")
+            print(f"Error al cargar o reproducir la canción: {e}")
             self.song_length = 0
+
+    def check_for_next_song(self):
+        if not self.user_is_dragging_slider and not self.is_paused_for_game and self.song_list:
+            if not pygame.mixer.music.get_busy():
+                self.current_song_index = (self.current_song_index + 1) % len(self.song_list)
+                self.play_song(self.current_song_index)
+        
+        self.playlist_check_job = self.root.after(1000, self.check_for_next_song)
 
     def set_volume(self, val):
         self.music_volume = float(val)
         if not self.is_muted:
             pygame.mixer.music.set_volume(self.music_volume)
 
-    def seek_song(self, val):
-        """Adelanta o retrocede la canción al punto especificado por el slider."""
-        if self.is_seeking: # Evita llamadas recursivas si el set() activa el command
-            return
-        
-        seek_seconds = float(val)
-        
-        # Detener y reiniciar la canción desde la nueva posición
-        pygame.mixer.music.play(loops=-1, start=seek_seconds)
-        
-        # Si estaba en silencio, hay que volver a aplicar el volumen 0
-        if self.is_muted:
-            pygame.mixer.music.set_volume(0)
-        else:
-            pygame.mixer.music.set_volume(self.music_volume)
+    def on_slider_press(self, event):
+        self.user_is_dragging_slider = True
+
+    def on_slider_release(self, event):
+        self.user_is_dragging_slider = False
+        if self.song_progress_slider:
+            seek_seconds = self.song_progress_slider.get()
+            self.play_song(self.current_song_index, start_time=seek_seconds)
+            if self.time_label_current:
+                self.time_label_current.config(text=self._format_time(seek_seconds))
+            self._on_slider_leave(None)
 
     def start_progress_updater(self):
-        """Inicia el proceso que actualiza la barra de progreso de la canción."""
         if self.song_update_job:
             self.root.after_cancel(self.song_update_job)
         self.update_song_progress()
 
     def update_song_progress(self):
-        """Actualiza la posición del slider de progreso de la canción."""
-        if pygame.mixer.music.get_busy() and self.song_progress_slider:
-            try:
-                # get_pos() devuelve milisegundos desde que empezó a sonar
-                current_pos_ms = pygame.mixer.music.get_pos()
-                current_pos_s = current_pos_ms / 1000.0
-                
-                # Evita que el slider actualice la música mientras el usuario la mueve
-                self.is_seeking = True
-                self.song_progress_slider.set(current_pos_s)
-                self.is_seeking = False
-            except tk.TclError:
-                # La ventana/widget fue destruida, detener el actualizador
-                self.song_progress_slider = None
-                if self.song_update_job:
-                    self.root.after_cancel(self.song_update_job)
-                return
-        
-        # Reprogramar la actualización
-        self.song_update_job = self.root.after(500, self.update_song_progress)
+        if self.user_is_dragging_slider:
+            self.song_update_job = self.root.after(200, self.update_song_progress)
+            return
 
+        try:
+            if pygame.mixer.music.get_busy():
+                current_pos_s = self.song_start_time + (pygame.mixer.music.get_pos() / 1000.0)
+                if current_pos_s < self.song_length:
+                    if self.song_progress_slider:
+                        self.song_progress_slider.set(current_pos_s)
+                    if self.time_label_current:
+                        self.time_label_current.config(text=self._format_time(current_pos_s))
+            
+            self.song_update_job = self.root.after(500, self.update_song_progress)
+        except (tk.TclError, pygame.error):
+            if self.song_update_job:
+                self.root.after_cancel(self.song_update_job)
+            self.song_progress_slider = None
+            self.time_label_current = None
+
+    def _on_slider_hover(self, event):
+        if self.seek_tooltip_label and self.song_progress_slider:
+            slider_width = self.song_progress_slider.winfo_width()
+            if slider_width > 0:
+                hover_pos_ratio = event.x / slider_width
+                hover_time_sec = self.song_length * hover_pos_ratio
+                self.seek_tooltip_label.config(text=self._format_time(hover_time_sec))
+
+    def _on_slider_leave(self, event):
+        if self.seek_tooltip_label:
+            self.seek_tooltip_label.config(text="")
 
     def toggle_mute(self):
         self.is_muted = not self.is_muted
-        if self.is_muted:
-            pygame.mixer.music.set_volume(0)
-        else:
-            pygame.mixer.music.set_volume(self.music_volume)
+        pygame.mixer.music.set_volume(0 if self.is_muted else self.music_volume)
         self.update_mute_buttons()
 
     def update_mute_buttons(self):
@@ -572,13 +607,28 @@ class CasinoApp:
 
         tk.Label(frame, text="Control de Música", font=("Helvetica", 16, "bold"), bg=c["frame_bg"], fg=c["fg"]).pack(pady=10)
 
-        # --- INICIO: NUEVA BARRA DE PROGRESO DE CANCIÓN ---
-        self.song_progress_slider = tk.Scale(frame, from_=0, to=self.song_length, resolution=0.1, orient="horizontal",
-                                 command=self.seek_song, bg=c["frame_bg"], fg=c["fg"],
-                                 troughcolor=c["neutral"], highlightthickness=0, length=300, showvalue=0)
-        self.song_progress_slider.pack(fill="x", pady=(10, 5))
-        self.start_progress_updater() # Asegura que se actualice al abrir la ventana
-        # --- FIN: NUEVA BARRA DE PROGRESO DE CANCIÓN ---
+        progress_frame = tk.Frame(frame, bg=c["frame_bg"])
+        progress_frame.pack(fill="x", pady=(10, 0))
+
+        self.time_label_current = tk.Label(progress_frame, text="00:00", font=("Arial", 10), bg=c["frame_bg"], fg=c["fg"])
+        self.time_label_current.pack(side="left", padx=(0, 5))
+
+        self.song_progress_slider = tk.Scale(progress_frame, from_=0, to=self.song_length, resolution=0.1, orient="horizontal",
+                                 command=None, bg=c["frame_bg"], fg=c["fg"],
+                                 troughcolor=c["neutral"], highlightthickness=0, showvalue=0)
+        self.song_progress_slider.pack(side="left", fill="x", expand=True)
+        self.song_progress_slider.bind("<ButtonPress-1>", self.on_slider_press)
+        self.song_progress_slider.bind("<ButtonRelease-1>", self.on_slider_release)
+        self.song_progress_slider.bind("<Motion>", self._on_slider_hover)
+        self.song_progress_slider.bind("<Leave>", self._on_slider_leave)
+
+        self.time_label_total = tk.Label(progress_frame, text=self._format_time(self.song_length), font=("Arial", 10), bg=c["frame_bg"], fg=c["fg"])
+        self.time_label_total.pack(side="left", padx=(5, 0))
+
+        self.seek_tooltip_label = tk.Label(frame, text="", font=("Arial", 10, "bold"), bg=c["frame_bg"], fg=c["gold"])
+        self.seek_tooltip_label.pack(pady=(0, 5))
+
+        self.start_progress_updater()
 
         listbox = tk.Listbox(frame, font=("Arial", 12), bg=c["tree_bg"], fg=c["tree_fg"], selectbackground=c["gold"], width=40, height=10)
         for song_name in self.song_list:
@@ -601,25 +651,20 @@ class CasinoApp:
                 selected_index = selection[0]
                 if self.current_song_index != selected_index:
                     self.play_song(selected_index)
-            
-            self.song_progress_slider = None # Limpiar referencia al cerrar
-            if self.song_update_job:
-                self.root.after_cancel(self.song_update_job)
-                self.song_update_job = None
-            
-            song_window.destroy()
+            on_closing()
 
-        # Limpiar referencia cuando la ventana se cierra con la 'X'
         def on_closing():
-            self.song_progress_slider = None
             if self.song_update_job:
                 self.root.after_cancel(self.song_update_job)
-                self.song_update_job = None
+            self.song_update_job = None
+            self.song_progress_slider = None
+            self.time_label_current = None
+            self.time_label_total = None
+            self.seek_tooltip_label = None
             song_window.destroy()
 
         song_window.protocol("WM_DELETE_WINDOW", on_closing)
         tk.Button(frame, text="Aceptar", command=on_select, font=("Arial", 12, "bold"), bg=c["gold"], fg=c["bg"]).pack(pady=(20, 10))
-    # --- FIN: FUNCIONES DE MÚSICA ---
 
     def apply_theme(self):
         c = COLORES[self.current_mode]
@@ -717,7 +762,7 @@ class CasinoApp:
             button.config(text='🔐')
         else:
             entry.config(show='*')
-            button.config(text='🔓')
+            button.config(text='�')
 
     def confirm_quit(self):
         if messagebox.askyesno("Confirmar Salida", "¿Está seguro de que desea salir del casino?"):
@@ -964,7 +1009,7 @@ class CasinoApp:
 
     def show_main_menu(self):
         if self.after_id: self.root.after_cancel(self.after_id)
-        self.clear_window()
+        self.clear_window(keep_playlist_job=True)
         c = COLORES[self.current_mode]
         
         rainbow_colors = ["#FFD700", "#FFFFFF", "#3498db", "#FF5733", "#33FF57", "#C70039", "#900C3F"]
@@ -1082,7 +1127,7 @@ class CasinoApp:
         RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Blackjack"), "🎲 Jugar Blackjack", game_btn_font, text_color=c["fg"]).pack(pady=12)
         RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Ruleta"), "🎡 Jugar Ruleta", game_btn_font, text_color=c["fg"]).pack(pady=12)
         RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Tragamonedas"), "🎰 Jugar Tragamonedas", game_btn_font, text_color=c["fg"]).pack(pady=12)
-        RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Coinflip"), "🪙 Jugar Cara o Sello", game_btn_font, text_color=c["fg"]).pack(pady=12)
+        RoundButton(games_frame, 320, 75, 8, c["danger"], c["frame_bg"], lambda: self.run_game("Coinflip"), "🪙 Jugar Coinflip", game_btn_font, text_color=c["fg"]).pack(pady=12)
 
         
         balance_frame = tk.Frame(self.center_content_frame, bg=c["frame_bg"])
@@ -1149,9 +1194,11 @@ class CasinoApp:
             
             recipient_id = self.users_map.get(recipient_name)
             
+            # --- INICIO: CORRECCIÓN DE TRANSFERENCIA ---
+            self.refresh_balance_display() # Actualiza el saldo antes de la confirmación
             is_sure = messagebox.askyesno(
                 "Confirmar Transferencia", 
-                f"¿Transferir ${amount:,.0f} a {recipient_name}?".replace(",", "."),
+                f"¿Está seguro que desea transferir ${amount:,.0f} a {recipient_name}?".replace(",", "."),
                 parent=transfer_window
             )
 
@@ -1164,6 +1211,7 @@ class CasinoApp:
                     transfer_window.destroy()
                 else:
                     messagebox.showerror("Error", message, parent=transfer_window)
+            # --- FIN: CORRECCIÓN DE TRANSFERENCIA ---
 
         tk.Button(frame, text="Confirmar Transferencia", command=confirm_transfer, font=("Arial", 14, "bold"), bg=c["gold"], fg=c["bg"]).grid(row=4, column=0, columnspan=2, pady=20, ipadx=10, ipady=5)
 
@@ -1428,11 +1476,10 @@ class CasinoApp:
         RoundButton(self.center_content_frame, btn_w, btn_h, btn_radius, c["neutral"], c["frame_bg"], self.show_main_menu, "⬅ Volver", btn_font).pack(pady=20)
 
     def _execute_game_logic(self, game, bet_placed):
-        # --- INICIO: PAUSAR MÚSICA ---
-        if pygame.mixer.music.get_busy() and not self.is_paused_for_game:
+        if pygame.mixer.music.get_busy():
+            self.song_paused_pos = self.song_start_time + (pygame.mixer.music.get_pos() / 1000.0)
             pygame.mixer.music.pause()
             self.is_paused_for_game = True
-        # --- FIN: PAUSAR MÚSICA ---
 
         self.root.withdraw()
         final_result_msg = None
@@ -1482,6 +1529,7 @@ class CasinoApp:
                         gross_winnings = int(result_str)
                         if gross_winnings == -1:
                             final_result_msg = "Juego cancelado, no se realizó ninguna apuesta."
+                            history_result = "empate" # No se registra en el historial
                         else:
                             net_change = gross_winnings - bet_placed
                             self.current_balance += net_change
@@ -1493,7 +1541,8 @@ class CasinoApp:
                                 final_result_msg, history_result = "Recuperaste tu apuesta.", "empate"
                     except (ValueError, TypeError):
                         final_result_msg = f"Resultado inválido de Tragamonedas: '{result_str}'"
-                if history_result:
+                
+                if history_result and final_result_msg != "Juego cancelado, no se realizó ninguna apuesta.":
                     add_history(self.current_user_id, bet_placed, history_result, game)
                 update_balance(self.current_user_id, self.current_balance)
         except Exception as e:
@@ -1501,14 +1550,18 @@ class CasinoApp:
         finally:
             self.root.deiconify()
             
-            # --- INICIO: REANUDAR MÚSICA ---
-            if not pygame.mixer.get_init():
-                pygame.mixer.init()
-            
-            if self.is_paused_for_game:
-                pygame.mixer.music.unpause()
-                self.is_paused_for_game = False
-            # --- FIN: REANUDAR MÚSICA ---
+            try:
+                if not pygame.mixer.get_init():
+                    pygame.mixer.init()
+                    self.play_song(self.current_song_index, start_time=self.song_paused_pos)
+                elif self.is_paused_for_game:
+                    pygame.mixer.music.unpause()
+            except Exception as e:
+                print(f"Error al reanudar la música: {e}")
+                self.play_song(self.current_song_index)
+
+            self.is_paused_for_game = False
+            self.song_paused_pos = 0
             
             self.show_main_menu()
             self.refresh_balance_display()
@@ -1523,10 +1576,15 @@ class CasinoApp:
         self.current_balance = 0
         self.show_start_screen()
 
-    def clear_window(self):
+    def clear_window(self, keep_playlist_job=False):
         if self.after_id:
             self.root.after_cancel(self.after_id)
             self.after_id = None
+        
+        if not keep_playlist_job and self.playlist_check_job:
+            self.root.after_cancel(self.playlist_check_job)
+            self.playlist_check_job = None
+            
         for widget in self.root.winfo_children():
             widget.destroy()
 

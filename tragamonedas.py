@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 import os
 import sys
 import pygame
-from collections import Counter # Importar Counter para contar frutas fácilmente
+from collections import Counter
 
 def resource_path(relative_path):
     """ Obtiene la ruta absoluta al recurso, funciona para desarrollo y para PyInstaller """
@@ -19,25 +19,17 @@ def resource_path(relative_path):
 # ----------------------------- MODELO -----------------------------
 class SlotMachine:
     def __init__(self):
-        # Multiplicadores para tríos
         self.multipliers = {
             "🍇": 3, "🍒": 4, "🍋": 5,
-            "🍊": 6, "🍉": 8, "🍓": 10  # Jackpot
+            "🍊": 6, "🍉": 8, "🍓": 10
         }
         self.symbols = list(self.multipliers.keys())
         self.result = ["❓", "❓", "❓"]
 
     def spin(self):
-        """
-        Genera un resultado completamente aleatorio. La lógica de premios está en calculate_winnings.
-        """
         self.result = [random.choice(self.symbols) for _ in range(3)]
 
     def calculate_winnings(self, bet, chosen_fruit):
-        """
-        Calcula la ganancia NETA basado en las nuevas reglas.
-        Devuelve (ganancia_neta, mensaje_explicativo).
-        """
         counts = Counter(self.result)
         
         if 3 in counts.values():
@@ -196,16 +188,13 @@ class SlotMachineView:
         self.root.after(1500, lambda: self.create_result_dialog(message, net_winnings))
 
     def create_result_dialog(self, message, net_winnings):
-        # Se crea una ventana Toplevel para el diálogo que es modal
         dialog = tk.Toplevel(self.root)
-        dialog.overrideredirect(True) # Sin bordes de ventana
-        dialog.config(bg="black") # Fondo negro sólido
+        dialog.overrideredirect(True)
+        dialog.config(bg="black")
         
-        # Hacer que la ventana de diálogo ocupe toda la pantalla y sea modal
         dialog.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
         dialog.grab_set()
 
-        # Caja de resultado (Frame) que se coloca DENTRO del Toplevel
         result_box = tk.Frame(dialog, bg="#141414", bd=3, relief="ridge", highlightbackground="#D4AF37", highlightthickness=3)
         result_box.place(relx=0.5, rely=0.5, anchor="center")
 
@@ -229,7 +218,6 @@ class SlotMachineView:
                                padx=20, pady=10, cursor="hand2", command=self.controller.salir)
         volver_btn.pack(pady=(10, 30))
 
-
 # ----------------------------- CONTROLADOR -----------------------------
 class SlotMachineController:
     def __init__(self, root):
@@ -246,7 +234,7 @@ class SlotMachineController:
         self.view.root.protocol("WM_DELETE_WINDOW", self.salir)
         
         self.selected_fruit = None
-        self.net_winnings = -self.bet_amount -1 
+        self.net_winnings = 0
         self.game_played = False
         
         pygame.mixer.init()
@@ -309,15 +297,15 @@ class SlotMachineController:
         self.view.show_final_screen(message, self.net_winnings)
 
     def salir(self):
+        # --- INICIO: LÓGICA CORREGIDA ---
         if not self.game_played:
-            self.net_winnings = -self.bet_amount
-
-        ganancia_bruta = self.net_winnings + self.bet_amount
-        
-        if self.net_winnings == -self.bet_amount - 1:
-             resultado_final_para_archivo = -1
+            # Si el juego no se ha jugado, el resultado es -1 para indicar cancelación.
+            resultado_final_para_archivo = -1
         else:
-             resultado_final_para_archivo = ganancia_bruta
+            # Si se jugó, se calcula la ganancia bruta normalmente.
+            ganancia_bruta = self.net_winnings + self.bet_amount
+            resultado_final_para_archivo = ganancia_bruta
+        # --- FIN: LÓGICA CORREGIDA ---
 
         resultado_txt_path = resource_path("resultado.txt")
         with open(resultado_txt_path, "w") as f:

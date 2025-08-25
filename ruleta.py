@@ -197,10 +197,14 @@ def juego_ruleta():
 
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
-                crear_resultado("perdiste")
+                # --- INICIO: CORRECCIÓN SALIDA SIN JUGAR ---
+                if estado == "esperando":
+                    crear_resultado("empate")
+                else:
+                    crear_resultado("perdiste")
+                # --- FIN: CORRECCIÓN SALIDA SIN JUGAR ---
                 corriendo = False
 
-            # *** CORRECCIÓN: Se cambia 'return' por 'corriendo = False' ***
             if estado == "resultado" and evento.type == pygame.MOUSEBUTTONDOWN:
                 if boton_volver_rect and boton_volver_rect.collidepoint(evento.pos):
                     corriendo = False 
@@ -219,7 +223,12 @@ def juego_ruleta():
                     if sonido_giro: sonido_giro.play()
                     velocidad_giro = random.uniform(20, 30)
                 elif boton_salir.verificar_clic(evento):
-                    crear_resultado("perdiste")
+                    # --- INICIO: CORRECCIÓN SALIDA SIN JUGAR ---
+                    if estado == "esperando":
+                        crear_resultado("empate")
+                    else:
+                        crear_resultado("perdiste")
+                    # --- FIN: CORRECCIÓN SALIDA SIN JUGAR ---
                     corriendo = False
 
 

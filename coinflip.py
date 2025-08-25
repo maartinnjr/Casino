@@ -71,43 +71,30 @@ def dibujar_caja_transparente(superficie, rect, color, radius=15):
     pygame.draw.rect(caja_surf, color, caja_surf.get_rect(), border_radius=radius)
     superficie.blit(caja_surf, rect.topleft)
 
-# --- CORREGIDO: Lógica de generación de animación ---
 def generar_animacion_moneda(tamano, cara_img, sello_img):
     """
     Genera la animación de un giro completo (360 grados) de forma programática.
-    Esta nueva lógica es matemáticamente precisa para asegurar fluidez y resultados correctos.
     """
     imagenes = []
-    num_frames_vuelta_completa = 120 # 60 frames por lado para máxima fluidez
+    num_frames_vuelta_completa = 120
     cara_base = pygame.transform.smoothscale(cara_img, (tamano, tamano))
     sello_base = pygame.transform.smoothscale(sello_img, (tamano, tamano))
 
-    # Genera una vuelta completa (cara -> sello -> cara)
     for i in range(num_frames_vuelta_completa):
         frame_surf = pygame.Surface((tamano, tamano), pygame.SRCALPHA)
-        
-        # El ángulo va de 0 a 2*PI a lo largo del ciclo de animación
         angulo = (i / num_frames_vuelta_completa) * (2 * math.pi)
-        
-        # El coseno del ángulo determina el ancho (perspectiva) y qué cara mostrar
         cos_angulo = math.cos(angulo)
         ancho_rel = abs(cos_angulo)
-        
-        # Si el coseno es positivo, se ve la cara. Si es negativo, el sello.
         textura_actual = cara_base if cos_angulo >= 0 else sello_base
-        
         ancho_actual = int(tamano * ancho_rel)
-        if ancho_actual < 1: ancho_actual = 1 # Evita errores con ancho cero
-        
+        if ancho_actual < 1: ancho_actual = 1
         textura_escalada = pygame.transform.smoothscale(textura_actual, (ancho_actual, tamano))
-        
         rect_textura = textura_escalada.get_rect(center=(tamano // 2, tamano // 2))
         frame_surf.blit(textura_escalada, rect_textura)
         imagenes.append(frame_surf)
         
     return imagenes
 
-# --- Clase para efecto de partículas de victoria ---
 class Particula:
     def __init__(self, x, y):
         self.x = x
@@ -218,11 +205,10 @@ def juego_coinflip():
     corriendo = True
     reloj = pygame.time.Clock()
     seleccion = None
-    estado = "esperando" # Estados: esperando, animacion, resultado
+    estado = "esperando"
     
     resultado_final = None
     
-    total_frames_recorrer = 0
     progreso_animacion_t = 0.0 
     duracion_animacion_s = 2.5 
     
@@ -231,6 +217,7 @@ def juego_coinflip():
     
     imagen_mostrada = cara_img
     particulas = []
+    sonido_lanzamiento_activo = False
 
     while corriendo:
         delta_time = reloj.tick(60) / 1000.0
@@ -272,8 +259,11 @@ def juego_coinflip():
         if estado == "animacion":
             progreso_animacion_t += delta_time
             
+            if sonido_lanzamiento_activo and progreso_animacion_t >= 1.0:
+                sonidos["lanzar"].fadeout(1500)
+                sonido_lanzamiento_activo = False
+
             if progreso_animacion_t >= duracion_animacion_s:
-                # La animación ha terminado, asegura que se muestre el frame final correcto
                 estado = "resultado"
                 imagen_mostrada = cara_img if resultado_final == "CARA" else sello_img
                 tiempo_resultado = pygame.time.get_ticks()
@@ -292,13 +282,14 @@ def juego_coinflip():
                 progreso_normalizado = progreso_animacion_t / duracion_animacion_s
                 progreso_eased = 1 - pow(1 - progreso_normalizado, 4) 
                 
+                total_frames_recorrer = (len(imagenes_moneda) * 3) + (0 if resultado_final == "CARA" else len(imagenes_moneda) // 2)
                 frame_actual = progreso_eased * total_frames_recorrer
                 
                 imagen_actual = imagenes_moneda[int(frame_actual) % len(imagenes_moneda)]
                 rect_img = imagen_actual.get_rect(center=centro_moneda_actual)
                 ventana.blit(imagen_actual, rect_img)
         
-        else: # Estado "esperando" o "resultado"
+        else:
             rect_img = imagen_mostrada.get_rect(center=centro_moneda_actual)
             ventana.blit(imagen_mostrada, rect_img)
 
@@ -319,7 +310,12 @@ def juego_coinflip():
 
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT or (evento.type == pygame.KEYDOWN and evento.key == pygame.K_ESCAPE):
-                crear_resultado("perdiste")
+                # --- INICIO: CORRECCIÓN SALIDA SIN JUGAR ---
+                if estado == "esperando":
+                    crear_resultado("empate")
+                else:
+                    crear_resultado("perdiste")
+                # --- FIN: CORRECCIÓN SALIDA SIN JUGAR ---
                 corriendo = False
 
             if estado == "resultado" and evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
@@ -342,16 +338,16 @@ def juego_coinflip():
                     progreso_animacion_t = 0.0 
                     resultado_final = random.choice(["CARA", "SELLO"])
                     
-                    # --- LÓGICA PARA 3 VUELTAS EXACTAS + ATERRIZAJE ---
-                    # El frame 0 es CARA. El frame de la mitad es SELLO.
-                    target_frame = 0 if resultado_final == "CARA" else len(imagenes_moneda) // 2
-                    
-                    # Calcula el total de frames a recorrer: 3 vueltas completas + los frames hasta el objetivo
-                    total_frames_recorrer = (len(imagenes_moneda) * 3) + target_frame
-                    
-                    if sonidos.get("lanzar"): sonidos["lanzar"].play()
+                    if sonidos.get("lanzar"):
+                        sonidos["lanzar"].play()
+                        sonido_lanzamiento_activo = True
                 elif boton_salir.verificar_clic(evento):
-                    crear_resultado("perdiste")
+                    # --- INICIO: CORRECCIÓN SALIDA SIN JUGAR ---
+                    if estado == "esperando":
+                        crear_resultado("empate")
+                    else:
+                        crear_resultado("perdiste")
+                    # --- FIN: CORRECCIÓN SALIDA SIN JUGAR ---
                     corriendo = False
         
         if estado == "resultado" and tiempo_resultado:
