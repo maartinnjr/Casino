@@ -15,8 +15,9 @@ import ruleta
 import tragamonedas
 import coinflip
 
+# Configuración de la conexión a la base de datos.
 db_config = {
-    'host': '192.168.1.139',
+    'host': '192.168.1.193',
     'user': 'Casino',
     'password': 'casino123',
     'database': 'casinodb',
@@ -26,11 +27,22 @@ db_config = {
 db_connection = None
 
 def get_db_connection():
+    """
+    Gestiona y mantiene una única conexión activa a la base de datos.
+    
+    Verifica si ya existe una conexión y si está activa. Si no, crea una nueva.
+    Esto previene la sobrecarga de crear múltiples conexiones.
+
+    Returns:
+        mysql.connector.connection.MySQLConnection or None: El objeto de conexión 
+        a la base de datos si es exitoso, o None si falla.
+    """
     global db_connection
     try:
         if db_connection is None or not db_connection.is_connected():
             db_connection = mysql.connector.connect(**db_config)
         else:
+            # Asegura que la conexión sigue viva antes de usarla.
             db_connection.ping(reconnect=True)
         return db_connection
     except mysql.connector.Error as e:
@@ -38,9 +50,22 @@ def get_db_connection():
         sys.exit()
         return None
 
+# Mapeo de nombres de juegos a sus IDs en la base de datos para un registro consistente.
 GAME_ID_MAP = {"Blackjack": 1, "Ruleta": 2, "Tragamonedas": 3, "Coinflip": 4}
 
 def resource_path(relative_path):
+    """
+    Obtiene la ruta absoluta a un recurso.
+    
+    Esencial para que el empaquetado con PyInstaller encuentre los archivos 
+    (imágenes, sonidos) tanto en modo de desarrollo como en el ejecutable final.
+
+    Args:
+        relative_path (str): La ruta relativa del archivo dentro del proyecto.
+
+    Returns:
+        str: La ruta absoluta y multiplataforma al recurso.
+    """
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -49,6 +74,7 @@ def resource_path(relative_path):
 
 SALDO_INICIAL = 2000
 
+# Paleta de colores para un diseño elegante y consistente.
 ELEGANT_COLORS = {
     "dark": {
         "bg": "#1A1A1A", "fg": "#FFFFFF", "btn_bg": "#A62639", "btn_active": "#C43B4E",
@@ -67,7 +93,28 @@ ELEGANT_COLORS = {
 COLORES = ELEGANT_COLORS
 
 class RoundButton(tk.Canvas):
+    """
+    Crea un widget de botón personalizado con esquinas redondeadas y efectos visuales.
+    Hereda de tk.Canvas para permitir un dibujo completamente personalizado.
+    """
     def __init__(self, parent, width, height, cornerradius, color, bg, command=None, text="", font=None, text_color="white", border_color="#666666", border_width=2):
+        """
+        Inicializa el botón redondeado.
+
+        Args:
+            parent (tk.Widget): El widget padre.
+            width (int): Ancho del botón.
+            height (int): Alto del botón.
+            cornerradius (int): Radio de las esquinas.
+            color (str): Color de fondo principal del botón.
+            bg (str): Color de fondo del widget padre para una apariencia plana.
+            command (function, optional): Función a ejecutar al hacer clic.
+            text (str, optional): Texto a mostrar en el botón.
+            font (tuple, optional): Fuente del texto.
+            text_color (str, optional): Color del texto.
+            border_color (str, optional): Color del borde.
+            border_width (int, optional): Ancho del borde.
+        """
         tk.Canvas.__init__(self, parent, borderwidth=0, relief="flat", highlightthickness=0, bg=bg)
         self.command = command
         self.width = width
@@ -89,16 +136,19 @@ class RoundButton(tk.Canvas):
         self._redraw(self.color)
 
     def _calculate_hover_color(self, color):
+        """Calcula una versión ligeramente más clara del color para el efecto hover."""
         r, g, b = self.winfo_rgb(color)
         r, g, b = int(r/256 * 1.15), int(g/256 * 1.15), int(b/256 * 1.15)
         return f'#{min(r, 255):02x}{min(g, 255):02x}{min(b, 255):02x}'
 
     def _calculate_press_color(self, color):
+        """Calcula una versión ligeramente más oscura del color para el efecto de presión."""
         r, g, b = self.winfo_rgb(color)
         r, g, b = int(r/256 * 0.85), int(g/256 * 0.85), int(b/256 * 0.85)
         return f'#{r:02x}{g:02x}{b:02x}'
 
     def _draw_button(self, color):
+        """Dibuja la forma del botón redondeado en el canvas."""
         self.delete("button")
         r, w, h, bw, bc = self.cornerradius, self.width, self.height, self.border_width, self.border_color
         self.create_rectangle(r, 0, w - r, h, fill=bc, outline="", tags="button")
@@ -118,17 +168,21 @@ class RoundButton(tk.Canvas):
             self.create_arc(x1 - 2*inner_r, y1 - 2*inner_r, x1, y1, start=270, extent=90, fill=color, outline="", tags="button")
 
     def _draw_text(self):
+        """Dibuja el texto centrado dentro del botón."""
         self.delete("text")
         self.create_text(self.width / 2, self.height / 2, text=self.text, font=self.font, fill=self.text_color, tags="text")
 
     def _redraw(self, color):
+        """Redibuja el botón completo, útil para cambiar su estado visual."""
         self._draw_button(color)
         self._draw_text()
 
     def _on_press(self, event):
+        """Maneja el evento de presionar el botón, cambiando su color."""
         self._redraw(self.press_color)
 
     def _on_release(self, event):
+        """Maneja el evento de soltar el botón, ejecutando el comando asociado."""
         if 0 < event.x < self.width and 0 < event.y < self.height and self.command:
             self.command()
         if self.winfo_exists():
@@ -138,12 +192,23 @@ class RoundButton(tk.Canvas):
                 self._redraw(self.color)
 
     def _on_enter(self, event):
+        """Maneja el evento cuando el cursor entra en el área del botón."""
         self._redraw(self.hover_color)
 
     def _on_leave(self, event):
+        """Maneja el evento cuando el cursor sale del área del botón."""
         self._redraw(self.color)
 
 def get_dropdown_data(table_name):
+    """
+    Obtiene datos de la base de datos para rellenar los menús desplegables (Combobox).
+    
+    Args:
+        table_name (str): El nombre de la tabla de la cual obtener los datos (ej: 'comunas', 'bancos').
+
+    Returns:
+        list: Una lista de tuplas (id, nombre), ordenada alfabéticamente por nombre.
+    """
     conn = get_db_connection()
     if not conn: return []
     cursor = conn.cursor()
@@ -160,6 +225,15 @@ def get_dropdown_data(table_name):
         cursor.close()
 
 def add_history(user_id, bet, result, game_name):
+    """
+    Registra el resultado de una partida en el historial de la base de datos.
+
+    Args:
+        user_id (int): El ID del usuario que jugó.
+        bet (int): El monto apostado.
+        result (str): El resultado de la partida ('ganaste', 'perdiste', 'empate').
+        game_name (str): El nombre del juego.
+    """
     conn = get_db_connection()
     if not conn: return
     cursor = conn.cursor()
@@ -175,6 +249,18 @@ def add_history(user_id, bet, result, game_name):
         cursor.close()
 
 def register_user(user, password, rut, address, currency, id_comuna, id_banco):
+    """
+    Inserta un nuevo usuario en la base de datos con sus datos personales.
+
+    Args:
+        user (str): Nombre de usuario.
+        password (str): Contraseña.
+        rut (str): RUT del usuario.
+        address (str): Dirección.
+        currency (str): Tipo de moneda.
+        id_comuna (int): ID de la comuna.
+        id_banco (int): ID del banco.
+    """
     conn = get_db_connection()
     if not conn: return
     cursor = conn.cursor()
@@ -192,6 +278,15 @@ def register_user(user, password, rut, address, currency, id_comuna, id_banco):
         cursor.close()
 
 def rut_exists(rut):
+    """
+    Verifica si un RUT ya existe en la base de datos para evitar duplicados.
+
+    Args:
+        rut (str): El RUT a verificar.
+
+    Returns:
+        bool: True si el RUT existe, False en caso contrario.
+    """
     conn = get_db_connection()
     if not conn: return False
     cursor = conn.cursor()
@@ -206,6 +301,18 @@ def rut_exists(rut):
         cursor.close()
 
 def authenticate_user(user, password, rut):
+    """
+    Valida las credenciales de un usuario contra la base de datos para el inicio de sesión.
+
+    Args:
+        user (str): Nombre de usuario ingresado.
+        password (str): Contraseña ingresada.
+        rut (str): RUT ingresado.
+
+    Returns:
+        tuple or None: Una tupla con (id_usuario, usuario, saldo) si la autenticación es exitosa,
+                       de lo contrario None.
+    """
     conn = get_db_connection()
     if not conn: return None
     cursor = conn.cursor()
@@ -220,6 +327,16 @@ def authenticate_user(user, password, rut):
         cursor.close()
 
 def authenticate_admin(user, password):
+    """
+    Valida las credenciales de un administrador para acceder a funciones especiales.
+
+    Args:
+        user (str): Nombre de usuario del administrador.
+        password (str): Contraseña del administrador.
+
+    Returns:
+        int or None: El ID del administrador si es exitoso, de lo contrario None.
+    """
     conn = get_db_connection()
     if not conn: return None
     cursor = conn.cursor()
@@ -235,6 +352,13 @@ def authenticate_admin(user, password):
         cursor.close()
 
 def update_balance(user_id, balance):
+    """
+    Actualiza el saldo de un usuario en la base de datos después de una partida.
+
+    Args:
+        user_id (int): El ID del usuario cuyo saldo se actualizará.
+        balance (int): El nuevo saldo del usuario.
+    """
     conn = get_db_connection()
     if not conn: return
     cursor = conn.cursor()
@@ -248,6 +372,12 @@ def update_balance(user_id, balance):
         cursor.close()
 
 def get_all_users_for_admin():
+    """
+    Obtiene una lista de todos los usuarios para mostrar en el panel de administrador.
+
+    Returns:
+        list: Una lista de tuplas, cada una representando un usuario.
+    """
     conn = get_db_connection()
     if not conn: return []
     cursor = conn.cursor()
@@ -262,6 +392,12 @@ def get_all_users_for_admin():
         cursor.close()
 
 def get_all_users_for_login():
+    """
+    Obtiene los nombres de usuario y RUTs para facilitar el inicio de sesión.
+
+    Returns:
+        list: Una lista de diccionarios con 'usuario' y 'rut'.
+    """
     conn = get_db_connection()
     if not conn: return []
     cursor = conn.cursor(dictionary=True)
@@ -276,6 +412,15 @@ def get_all_users_for_login():
         cursor.close()
 
 def get_user_balance(user_id):
+    """
+    Consulta y devuelve el saldo actual de un usuario específico.
+
+    Args:
+        user_id (int): El ID del usuario.
+
+    Returns:
+        int or None: El saldo del usuario si se encuentra, de lo contrario None.
+    """
     conn = get_db_connection()
     if not conn: return None
     cursor = conn.cursor()
@@ -292,6 +437,12 @@ def get_user_balance(user_id):
         cursor.close()
 
 def get_top_10_ranking():
+    """
+    Obtiene los 10 usuarios con más saldo para mostrar en el ranking.
+
+    Returns:
+        list: Una lista de diccionarios con 'usuario' y 'saldo'.
+    """
     conn = get_db_connection()
     if not conn: return []
     cursor = conn.cursor(dictionary=True)
@@ -306,6 +457,15 @@ def get_top_10_ranking():
         cursor.close()
 
 def get_all_other_users(current_user_id):
+    """
+    Obtiene todos los usuarios excepto el actual, para la función de transferencia.
+
+    Args:
+        current_user_id (int): El ID del usuario que está realizando la acción.
+
+    Returns:
+        list: Una lista de diccionarios con 'id_usuario' y 'usuario'.
+    """
     conn = get_db_connection()
     if not conn: return []
     cursor = conn.cursor(dictionary=True)
@@ -320,6 +480,24 @@ def get_all_other_users(current_user_id):
         cursor.close()
 
 def perform_candy_exchange(admin_id, user_id, saldo_cost, dulces_gain):
+    """
+    Ejecuta una transacción segura para canjear saldo por dulces.
+
+    Aprendizaje Clave del Proyecto:
+        Esta función utiliza una transacción de base de datos (`conn.start_transaction`, 
+        `conn.commit`, `conn.rollback`) para garantizar la integridad de los datos. 
+        O la operación completa (restar saldo, sumar dulces, registrar canje) tiene éxito,
+        o se revierte por completo si algo falla, evitando inconsistencias.
+
+    Args:
+        admin_id (int): ID del administrador que autoriza el canje.
+        user_id (int): ID del usuario que recibe los dulces.
+        saldo_cost (int): Cantidad de saldo a descontar.
+        dulces_gain (int): Cantidad de dulces a añadir.
+
+    Returns:
+        tuple: (bool, str) indicando si la operación fue exitosa y un mensaje.
+    """
     conn = get_db_connection()
     if not conn:
         return False, "Sin conexión a la base de datos."
@@ -374,6 +552,25 @@ def perform_candy_exchange(admin_id, user_id, saldo_cost, dulces_gain):
         cursor.close()
 
 def perform_transfer(sender_id, recipient_id, amount, password):
+    """
+    Ejecuta una transacción segura para transferir saldo entre usuarios.
+
+    Aprendizaje Clave del Proyecto:
+        Al igual que el canje de dulces, esta es una de las funciones más importantes
+        del proyecto. Utiliza una transacción para asegurar que el dinero no se "pierda"
+        en el sistema. Si algún paso falla (contraseña incorrecta, saldo insuficiente,
+        error de red), `conn.rollback()` revierte todos los cambios, manteniendo la
+        consistencia de la base de datos.
+
+    Args:
+        sender_id (int): ID del usuario que envía el dinero.
+        recipient_id (int): ID del usuario que recibe el dinero.
+        amount (int): Monto a transferir.
+        password (str): Contraseña del emisor para confirmar.
+
+    Returns:
+        tuple: (bool, str) indicando si la transferencia fue exitosa y un mensaje.
+    """
     conn = get_db_connection()
     if not conn: return False, "Sin conexión a la base de datos."
     cursor = conn.cursor(dictionary=True)
@@ -409,6 +606,12 @@ def perform_transfer(sender_id, recipient_id, amount, password):
         cursor.close()
 
 def launch_game_process(game_name):
+    """
+    Inicia un juego como un proceso separado para no bloquear la GUI de Tkinter.
+
+    Args:
+        game_name (str): El nombre del juego a lanzar.
+    """
     if game_name == "Tragamonedas":
         root = tk.Tk()
         tragamonedas.SlotMachineController(root)
@@ -421,9 +624,19 @@ def launch_game_process(game_name):
         coinflip.juego_coinflip()
 
 class CasinoApp:
+    """
+    Clase principal que controla toda la aplicación del casino, incluyendo la
+    interfaz de usuario, la lógica de negocio y la interacción con los juegos.
+    """
     def __init__(self, root):
+        """
+        Inicializa la aplicación principal del casino.
+
+        Args:
+            root (tk.Tk): La ventana raíz de Tkinter.
+        """
         self.root = root
-        self.active_processes = []
+        self.active_processes = {}
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         pygame.init()
@@ -435,7 +648,7 @@ class CasinoApp:
         self.is_muted = False
         self.music_volume = 0.5
         
-        self.user_is_dragging_slider = False
+        self.is_user_dragging_slider = False
         self.first_launch = True
         self.song_start_time = 0
         
@@ -479,14 +692,31 @@ class CasinoApp:
 
         self.preload_assets()
         self.show_start_screen()
+        self.check_game_processes()
+
+    def check_game_processes(self):
+        """Revisa periódicamente si algún proceso de juego ha terminado, sin congelar la GUI."""
+        if self.active_processes:
+            finished_pids = []
+            for pid, (process, game_name, bet_placed) in self.active_processes.items():
+                if not process.is_alive():
+                    self.process_game_result(game_name, bet_placed)
+                    finished_pids.append(pid)
+            
+            for pid in finished_pids:
+                del self.active_processes[pid]
+        
+        self.root.after(500, self.check_game_processes)
 
     def preload_assets(self):
+        """Carga y procesa las imágenes de fondo al inicio para mejorar el rendimiento."""
         slide_size = (int(self.w * 0.55), self.h)
         main_menu_size = (self.w, self.h)
         self._load_and_cache_slides(slide_size)
         self._load_and_cache_slides(main_menu_size, darken=True)
 
     def _load_and_cache_slides(self, size, darken=False):
+        """Función auxiliar para cargar, redimensionar y almacenar imágenes en memoria."""
         cache = self.cached_dark_slide_images if darken else self.cached_slide_images
         if size in cache:
             return
@@ -496,7 +726,7 @@ class CasinoApp:
         
         for name in slide_names:
             try:
-                img = Image.open(resource_path(name)).convert("RGBA")
+                img = Image.open(resource_path(os.path.join("img", "slides", name))).convert("RGBA")
                 img_fitted = ImageOps.fit(img, size, Image.LANCZOS)
                 
                 if darken:
@@ -513,12 +743,14 @@ class CasinoApp:
              cache[size].append(ImageTk.PhotoImage(fallback_img))
 
     def _format_time(self, seconds):
+        """Convierte una duración en segundos al formato de texto MM:SS."""
         if seconds is None or seconds < 0:
             return "00:00"
         mins, secs = divmod(int(seconds), 60)
         return f"{mins:02d}:{secs:02d}"
 
     def load_and_play_music(self):
+        """Busca archivos MP3 en la carpeta de música y comienza la reproducción."""
         music_folder = resource_path("musica")
         if os.path.isdir(music_folder):
             self.song_list = [f for f in os.listdir(music_folder) if f.endswith(".mp3")]
@@ -534,6 +766,7 @@ class CasinoApp:
             os.makedirs(music_folder)
 
     def play_song(self, index, start_time=0):
+        """Carga y reproduce una canción específica de la lista de reproducción."""
         if not self.song_list or not (0 <= index < len(self.song_list)):
             return
         
@@ -561,9 +794,10 @@ class CasinoApp:
             self.song_length = 0
 
     def check_pygame_events(self):
+        """Maneja los eventos de Pygame, como el final de una canción, para que la música sea continua."""
         for event in pygame.event.get():
             if event.type == self.SONG_END_EVENT:
-                if not self.user_is_dragging_slider:
+                if not self.is_user_dragging_slider:
                     next_index = self.current_song_index
                     if len(self.song_list) > 1:
                         while next_index == self.current_song_index:
@@ -572,30 +806,38 @@ class CasinoApp:
         self.root.after(100, self.check_pygame_events)
 
     def set_volume(self, val):
+        """Ajusta el volumen de la música según el valor del control deslizante."""
         self.music_volume = float(val) / 100.0
         if not self.is_muted:
             pygame.mixer.music.set_volume(self.music_volume)
 
     def on_slider_press(self, event):
-        self.user_is_dragging_slider = True
+        """Detecta cuando el usuario empieza a arrastrar el control de progreso de la canción."""
+        self.is_user_dragging_slider = True
+        if self.song_update_job:
+            self.root.after_cancel(self.song_update_job)
 
     def on_slider_release(self, event):
-        self.user_is_dragging_slider = False
-        if self.song_progress_slider:
-            seek_seconds = self.song_progress_slider.get()
-            self.play_song(self.current_song_index, start_time=seek_seconds)
-            if self.time_label_current:
-                self.time_label_current.config(text=self._format_time(seek_seconds))
+        """Detecta cuando el usuario suelta el control de progreso y salta a ese punto de la canción."""
+        if self.is_user_dragging_slider:
+            self.is_user_dragging_slider = False
+            if self.song_progress_slider:
+                seek_seconds = self.song_progress_slider.get()
+                self.play_song(self.current_song_index, start_time=seek_seconds)
+                if self.time_label_current:
+                    self.time_label_current.config(text=self._format_time(seek_seconds))
+                self.start_progress_updater()
             self._on_slider_leave(None)
 
     def start_progress_updater(self):
+        """Inicia el bucle que actualiza visualmente el progreso de la canción."""
         if self.song_update_job:
             self.root.after_cancel(self.song_update_job)
         self.update_song_progress()
 
     def update_song_progress(self):
-        if self.user_is_dragging_slider:
-            self.song_update_job = self.root.after(200, self.update_song_progress)
+        """Actualiza periódicamente la posición del control deslizante para que coincida con el tiempo de la canción."""
+        if self.is_user_dragging_slider:
             return
 
         try:
@@ -603,7 +845,8 @@ class CasinoApp:
                 current_pos_s = self.song_start_time + (pygame.mixer.music.get_pos() / 1000.0)
                 if current_pos_s < self.song_length:
                     if self.song_progress_slider:
-                        self.song_progress_slider.set(current_pos_s)
+                        if not self.is_user_dragging_slider:
+                            self.song_progress_slider.set(current_pos_s)
                     if self.time_label_current:
                         self.time_label_current.config(text=self._format_time(current_pos_s))
             
@@ -615,23 +858,31 @@ class CasinoApp:
             self.time_label_current = None
 
     def _on_slider_hover(self, event):
+        """Muestra una etiqueta con el tiempo exacto cuando el cursor pasa sobre la barra de progreso."""
         if self.seek_tooltip_label and self.song_progress_slider:
             slider_width = self.song_progress_slider.winfo_width()
             if slider_width > 0:
-                hover_pos_ratio = event.x / slider_width
+                if self.is_user_dragging_slider:
+                    hover_pos_ratio = self.song_progress_slider.get() / self.song_length
+                else:
+                    hover_pos_ratio = event.x / slider_width
+                
                 hover_time_sec = self.song_length * hover_pos_ratio
                 self.seek_tooltip_label.config(text=self._format_time(hover_time_sec))
 
     def _on_slider_leave(self, event):
+        """Oculta la etiqueta de tiempo cuando el cursor sale de la barra de progreso."""
         if self.seek_tooltip_label:
             self.seek_tooltip_label.config(text="")
 
     def toggle_mute(self):
+        """Activa o desactiva el sonido de la música."""
         self.is_muted = not self.is_muted
         pygame.mixer.music.set_volume(0 if self.is_muted else self.music_volume)
         self.update_mute_buttons()
 
     def update_mute_buttons(self):
+        """Actualiza el texto y el icono de los botones de silencio para reflejar el estado actual."""
         icon_text = "🔇" if self.is_muted else "🔊"
         if self.start_screen_mute_button and self.start_screen_mute_button.winfo_exists():
             self.start_screen_mute_button.config(text=icon_text)
@@ -642,6 +893,7 @@ class CasinoApp:
             self.main_menu_mute_button._redraw(self.main_menu_mute_button.color)
 
     def show_song_selection_window(self):
+        """Abre una ventana emergente para que el usuario elija una canción y ajuste el volumen."""
         if not self.song_list:
             messagebox.showinfo("Sin Canciones", "No hay canciones en la carpeta 'musica' para seleccionar.")
             return
@@ -718,16 +970,19 @@ class CasinoApp:
         tk.Button(frame, text="Aceptar", command=on_select, font=("Arial", 12, "bold"), bg=c["gold"], fg=c["bg"]).pack(pady=(20, 10))
 
     def apply_theme(self):
+        """Aplica la paleta de colores definida a la ventana principal."""
         c = COLORES[self.current_mode]
         self.root.configure(bg=c["bg"])
 
     def animate_title(self, widget, colors, index=0):
+        """Crea un efecto de cambio de color en el texto de un widget para hacerlo más llamativo."""
         if widget.winfo_exists():
             widget.config(fg=colors[index])
             next_index = (index + 1) % len(colors)
             self.root.after(600, lambda: self.animate_title(widget, colors, next_index))
 
     def start_slideshow(self, right_frame, size):
+        """Inicia el carrusel de imágenes de fondo en un frame específico."""
         if self.after_id: self.root.after_cancel(self.after_id)
         
         slide_images = self.cached_slide_images.get(size)
@@ -744,6 +999,7 @@ class CasinoApp:
         self.after_id = self.root.after(5000, lambda: self.change_slide(size=size))
 
     def change_slide(self, for_main_menu=False, size=None):
+        """Cambia a la siguiente imagen en el carrusel de fondos."""
         if self.after_id:
             self.root.after_cancel(self.after_id)
 
@@ -759,6 +1015,7 @@ class CasinoApp:
         self.after_id = self.root.after(5000, lambda: self.change_slide(for_main_menu=for_main_menu, size=size))
 
     def _create_split_layout(self):
+        """Crea la estructura de pantalla dividida usada en el login y registro."""
         self.clear_window()
         c = COLORES[self.current_mode]
         main_frame = tk.Frame(self.root, bg=c["bg"])
@@ -773,6 +1030,7 @@ class CasinoApp:
         return left_frame, main_frame
 
     def _toggle_password_visibility(self, entry, button):
+        """Muestra u oculta los caracteres de una contraseña en un campo de texto."""
         if entry.cget('show') == '*':
             entry.config(show='')
             button.config(text='🔐')
@@ -781,20 +1039,22 @@ class CasinoApp:
             button.config(text='👁️')
 
     def on_closing(self):
+        """Maneja el cierre de la aplicación, pidiendo confirmación al usuario."""
         if messagebox.askyesno("Salir", "¿Está seguro de que desea salir del casino?"):
-            for p in self.active_processes:
-                if p.is_alive():
-                    p.terminate()
+            for pid, (process, game_name, bet_placed) in self.active_processes.items():
+                if process.is_alive():
+                    process.terminate()
             self.root.destroy()
             sys.exit()
 
     def show_start_screen(self):
+        """Muestra la pantalla de bienvenida inicial con opciones para registrarse o iniciar sesión."""
         left_frame, main_frame = self._create_split_layout()
         c = COLORES[self.current_mode]
         content_container = tk.Frame(left_frame, bg=c["bg"])
         content_container.pack(expand=True)
         try:
-            img_casino = Image.open(resource_path("logo_casino.png"))
+            img_casino = Image.open(resource_path(os.path.join("img", "Logos", "logo_casino.png")))
             img_casino.thumbnail((250, 250), Image.LANCZOS)
             self.logo_casino_img = ImageTk.PhotoImage(img_casino)
             logo_casino_label = tk.Label(content_container, image=self.logo_casino_img, bg=c["bg"])
@@ -826,7 +1086,7 @@ class CasinoApp:
         self.update_mute_buttons()
 
         try:
-            img_empresa = Image.open(resource_path("logo_empresa.png"))
+            img_empresa = Image.open(resource_path(os.path.join("img", "Logos", "logo_empresa.png")))
             img_empresa.thumbnail((200, 100), Image.LANCZOS)
             self.logo_empresa_img = ImageTk.PhotoImage(img_empresa)
             logo_empresa_label = tk.Label(content_container, image=self.logo_empresa_img, bg=c["bg"])
@@ -835,13 +1095,14 @@ class CasinoApp:
             print(f"No se pudo cargar logo_empresa.png: {e}")
 
     def show_register_screen(self):
+        """Muestra el formulario para que un nuevo usuario pueda registrarse en el sistema."""
         left_frame, _ = self._create_split_layout()
         c = COLORES[self.current_mode]
         content_container = tk.Frame(left_frame, bg=c["bg"])
         content_container.pack(expand=True, fill="both")
 
         try:
-            img_empresa = Image.open(resource_path("logo_empresa.png"))
+            img_empresa = Image.open(resource_path(os.path.join("img", "Logos", "logo_empresa.png")))
             img_empresa.thumbnail((180, 90), Image.LANCZOS)
             self.logo_empresa_img = ImageTk.PhotoImage(img_empresa)
             logo_empresa_label = tk.Label(content_container, image=self.logo_empresa_img, bg=c["bg"])
@@ -853,7 +1114,7 @@ class CasinoApp:
         center_frame.pack(expand=True)
 
         try:
-            img_casino = Image.open(resource_path("logo_casino.png"))
+            img_casino = Image.open(resource_path(os.path.join("img", "Logos", "logo_casino.png")))
             img_casino.thumbnail((180, 180), Image.LANCZOS)
             self.logo_casino_img = ImageTk.PhotoImage(img_casino)
             logo_casino_label = tk.Label(center_frame, image=self.logo_casino_img, bg=c["bg"])
@@ -943,13 +1204,14 @@ class CasinoApp:
         RoundButton(button_container, btn_w, btn_h, btn_radius, c["neutral"], c["bg"], self.show_start_screen, "⬅ Volver", btn_font).pack(pady=5)
 
     def show_login_screen(self):
+        """Muestra el formulario para que un usuario existente inicie sesión."""
         left_frame, _ = self._create_split_layout()
         c = COLORES[self.current_mode]
         content_container = tk.Frame(left_frame, bg=c["bg"])
         content_container.pack(expand=True, fill="both")
         
         try:
-            img_empresa = Image.open(resource_path("logo_empresa.png"))
+            img_empresa = Image.open(resource_path(os.path.join("img", "Logos", "logo_empresa.png")))
             img_empresa.thumbnail((200, 100), Image.LANCZOS)
             self.logo_empresa_img = ImageTk.PhotoImage(img_empresa)
             logo_empresa_label = tk.Label(content_container, image=self.logo_empresa_img, bg=c["bg"])
@@ -961,7 +1223,7 @@ class CasinoApp:
         center_frame.pack(expand=True)
 
         try:
-            img_casino = Image.open(resource_path("logo_casino.png"))
+            img_casino = Image.open(resource_path(os.path.join("img", "Logos", "logo_casino.png")))
             img_casino.thumbnail((200, 200), Image.LANCZOS)
             self.logo_casino_img = ImageTk.PhotoImage(img_casino)
             logo_casino_label = tk.Label(center_frame, image=self.logo_casino_img, bg=c["bg"])
@@ -1026,6 +1288,7 @@ class CasinoApp:
         RoundButton(button_container, btn_w, btn_h, btn_radius, c["neutral"], c["bg"], self.show_start_screen, "⬅ Volver", btn_font).pack(pady=5)
 
     def refresh_balance_display(self):
+        """Actualiza la etiqueta de saldo en la GUI con el valor más reciente de la base de datos."""
         if self.current_user_id and hasattr(self, 'balance_label') and self.balance_label.winfo_exists():
             latest_balance = get_user_balance(self.current_user_id)
             if latest_balance is not None:
@@ -1034,6 +1297,7 @@ class CasinoApp:
         self.refresh_ranking_display()
 
     def refresh_ranking_display(self):
+        """Actualiza la tabla del ranking de los 10 mejores jugadores en la GUI."""
         if hasattr(self, 'ranking_tree') and self.ranking_tree.winfo_exists():
             for item in self.ranking_tree.get_children():
                 self.ranking_tree.delete(item)
@@ -1043,9 +1307,11 @@ class CasinoApp:
                 self.ranking_tree.insert("", "end", values=(f"{i}", user_data['usuario'], saldo_formateado))
 
     def open_website(self):
+        """Abre el sitio web del proyecto en el navegador web predeterminado."""
         webbrowser.open("http://192.168.1.139/Casino_Local/")
 
     def show_main_menu(self):
+        """Muestra el menú principal del casino después de un inicio de sesión exitoso."""
         if self.after_id: self.root.after_cancel(self.after_id)
         self.clear_window(keep_playlist_job=True)
         c = COLORES[self.current_mode]
@@ -1179,6 +1445,7 @@ class CasinoApp:
         self.refresh_balance_display()
 
     def _build_game_selection_widgets(self):
+        """Construye y muestra los botones de selección de juego en el frame central."""
         for widget in self.center_content_frame.winfo_children():
             widget.destroy()
 
@@ -1211,6 +1478,7 @@ class CasinoApp:
         self.refresh_balance_display()
 
     def show_transfer_window(self):
+        """Abre una ventana para que el usuario pueda transferir saldo a otro jugador."""
         c = COLORES[self.current_mode]
         transfer_window = tk.Toplevel(self.root)
         transfer_window.title("Transferir Saldo")
@@ -1282,6 +1550,7 @@ class CasinoApp:
         tk.Button(frame, text="Confirmar Transferencia", command=confirm_transfer, font=("Arial", 14, "bold"), bg=c["gold"], fg=c["bg"]).grid(row=4, column=0, columnspan=2, pady=20, ipadx=10, ipady=5)
 
     def open_admin_login(self):
+        """Abre una ventana de inicio de sesión para administradores."""
         c = COLORES[self.current_mode]
         admin_login_window = tk.Toplevel(self.root)
         admin_login_window.title("Acceso de Administrador")
@@ -1310,6 +1579,7 @@ class CasinoApp:
         self.refresh_balance_display()
 
     def show_candy_exchange_window(self):
+        """Muestra el panel de administrador para canjear saldo por premios (dulces)."""
         c = COLORES[self.current_mode]
         candy_window = tk.Toplevel(self.root)
         candy_window.title("Panel de Administrador - Canjear Dulces")
@@ -1368,6 +1638,7 @@ class CasinoApp:
         tk.Button(exchange_frame, text="Refrescar Lista", command=refresh_tree).pack(pady=5)
 
     def show_ranking(self):
+        """Muestra una ventana con el ranking completo de jugadores y sus estadísticas."""
         c = COLORES[self.current_mode]
         rainbow_colors = ["#FFD700", "#FFFFFF", "#3498db", "#FF5733", "#33FF57", "#C70039", "#900C3F"]
 
@@ -1430,6 +1701,7 @@ class CasinoApp:
         self.refresh_balance_display()
 
     def show_user_history(self):
+        """Muestra una ventana con el historial de partidas del usuario que ha iniciado sesión."""
         c = COLORES[self.current_mode]
         rainbow_colors = ["#FFD700", "#FFFFFF", "#3498db", "#FF5733", "#33FF57", "#C70039", "#900C3F"]
         
@@ -1487,6 +1759,7 @@ class CasinoApp:
         self.refresh_balance_display()
 
     def run_game(self, game="Blackjack"):
+        """Prepara la interfaz para que el usuario seleccione una apuesta antes de iniciar un juego."""
         for widget in self.center_content_frame.winfo_children():
             widget.destroy()
 
@@ -1542,6 +1815,25 @@ class CasinoApp:
         RoundButton(self.center_content_frame, btn_w, btn_h, btn_radius, c["neutral"], c["frame_bg"], self._build_game_selection_widgets, "⬅ Volver", btn_font).pack(pady=20)
 
     def _execute_game_logic(self, game_name, bet_placed):
+        """
+        Gestiona la ejecución de un juego, conectando la GUI con los módulos de Pygame.
+
+        Desafío Clave del Proyecto:
+            Esta función implementa la solución al problema más complejo: la convivencia
+            entre el bucle principal de Tkinter (GUI) y los bucles de Pygame (juegos).
+            En lugar de intentar integrarlos directamente, se optó por una separación de
+            procesos:
+            1. Se lanza el juego en un proceso completamente nuevo (`multiprocessing.Process`).
+            2. La comunicación (monto de la apuesta) se pasa a través de un archivo temporal (`apuesta.txt`).
+            3. El proceso del juego se ejecuta de forma independiente y, al terminar, escribe su
+               resultado en otro archivo (`resultado.txt`).
+            4. La GUI principal nunca se congela y espera a que el proceso del juego termine
+               para leer el resultado y actualizar el estado del usuario.
+
+        Args:
+            game_name (str): El nombre del juego a ejecutar.
+            bet_placed (int): El monto que el usuario ha apostado.
+        """
         if pygame.mixer.music.get_busy() and not self.is_muted:
             pygame.mixer.music.set_volume(0.3)
 
@@ -1557,19 +1849,20 @@ class CasinoApp:
 
         game_process = multiprocessing.Process(target=launch_game_process, args=(game_name,))
         game_process.start()
-        self.active_processes.append(game_process)
-        
-        # <-- MODIFICADO: Vuelve al menú de selección de juegos INMEDIATAMENTE después de lanzar el juego.
+        self.active_processes[game_process.pid] = (game_process, game_name, bet_placed)
         self._build_game_selection_widgets()
 
-        self.root.after(100, self._check_game_completion, game_process, game_name, bet_placed)
-
-    def _check_game_completion(self, process, game_name, bet_placed):
-        if process.is_alive():
-            self.root.after(100, self._check_game_completion, process, game_name, bet_placed)
-            return
+    def process_game_result(self, game_name, bet_placed):
+        """
+        Procesa el resultado de un juego que ha terminado.
         
-        self.active_processes.remove(process)
+        Lee el archivo `resultado.txt`, calcula las ganancias o pérdidas,
+        actualiza el saldo del usuario y registra la partida en el historial.
+
+        Args:
+            game_name (str): El nombre del juego que finalizó.
+            bet_placed (int): El monto que se apostó en esa partida.
+        """
         final_result_msg = ""
         result_txt_path = resource_path("resultado.txt")
         
@@ -1624,18 +1917,17 @@ class CasinoApp:
             self.refresh_balance_display()
 
             if final_result_msg:
-                # <-- MODIFICADO: Solo muestra el mensaje. El regreso al menú ya se hizo antes.
                 messagebox.showinfo("Resultado", final_result_msg)
 
-
-
     def logout(self):
+        """Cierra la sesión del usuario actual y regresa a la pantalla de inicio."""
         self.current_user_id = None
         self.current_username = None
         self.current_balance = 0
         self.show_start_screen()
 
     def clear_window(self, keep_playlist_job=False):
+        """Elimina todos los widgets de la ventana para poder construir una nueva vista."""
         if self.after_id:
             self.root.after_cancel(self.after_id)
             self.after_id = None
