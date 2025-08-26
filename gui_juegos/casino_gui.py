@@ -17,7 +17,7 @@ import coinflip
 
 # Configuración de la conexión a la base de datos.
 db_config = {
-    'host': '192.168.1.193',
+    'host': '192.168.1.139',
     'user': 'Casino',
     'password': 'casino123',
     'database': 'casinodb',
