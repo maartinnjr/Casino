@@ -4,26 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palacio de la Fortuna - Galería</title>
+    <link rel="icon" type="image/png" href="../img/logo_casino.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/galeria.css">
 </head>
 <body>
-
     <div class="background-video-container">
-        <video autoplay loop muted playsinline class="background-video">
-            <source src="../img/fondo.mp4" type="video/mp4">
-            Tu navegador no soporta el elemento de video.
-        </video>
+        <video autoplay loop muted playsinline class="background-video"><source src="../img/fondo.mp4" type="video/mp4"></video>
         <div class="background-overlay"></div>
     </div>
-
     <header class="header">
         <div class="container header-content">
-            <div class="logo-container">
+            <a href="../index.html" class="logo-container">
                 <img src="../img/logo_casino.png" alt="Logo Palacio de la Fortuna" class="logo-img">
                 <h1 class="site-title">Palacio de la Fortuna</h1>
-            </div>
-            <button class="hamburger">☰</button>
+            </a>
             <nav class="main-nav">
                 <ul>
                     <li><a href="../index.html">Inicio</a></li>
@@ -33,113 +28,51 @@
                     <li><a href="sobre-nosotros.html">Sobre Nosotros</a></li>
                 </ul>
             </nav>
+            <button class="hamburger" aria-label="Abrir menú">
+                <span class="hamburger-box">
+                    <span class="hamburger-inner"></span>
+                </span>
+            </button>
         </div>
     </header>
-
     <main class="main-content">
         <section class="gallery-section container">
             <button id="btn-retroceso" class="back-button">← Volver Atrás</button>
             <h2 class="section-title">Galería</h2>
-
             <h3 class="gallery-subtitle">Imágenes Referenciales</h3>
             <div class="media-grid">
-                <div class="media-card">
-                    <img src="https://image.pollinations.ai/prompt/slot%20machine%20casino%20interior%201" alt="Imagen referencial de casino 1">
-                    <p class="media-caption">Imagen referencial de casino</p>
-                </div>
-                <div class="media-card">
-                    <img src="https://image.pollinations.ai/prompt/slot%20machines%20casino%20floor%202" alt="Imagen referencial de casino 2">
-                    <p class="media-caption">Imagen referencial de casino</p>
-                </div>
-                <div class="media-card">
-                    <img src="https://image.pollinations.ai/prompt/close-up%20slot%20machine%203" alt="Imagen referencial de tragamonedas">
-                    <p class="media-caption">Imagen referencial de tragamonedas</p>
-                </div>
-                <div class="media-card">
-                    <img src="https://image.pollinations.ai/prompt/row%20of%20slot%20machines%204" alt="Imagen referencial de fila de tragamonedas">
-                    <p class="media-caption">Imagen referencial de tragamonedas</p>
-                </div>
-                <div class="media-card">
-                    <img src="https://image.pollinations.ai/prompt/roulette%20table%20in%20a%20casino%205" alt="Imagen referencial de mesa de ruleta">
-                    <p class="media-caption">Imagen referencial de ruleta</p>
-                </div>
+                <div class="media-card"><img src="https://image.pollinations.ai/prompt/slot%20machine%20casino%20interior%201" alt="Imagen referencial de casino 1"><p class="media-caption">Imagen referencial de casino</p></div>
+                <div class="media-card"><img src="https://image.pollinations.ai/prompt/slot%20machines%20casino%20floor%202" alt="Imagen referencial de casino 2"><p class="media-caption">Imagen referencial de casino</p></div>
+                <div class="media-card"><img src="https://image.pollinations.ai/prompt/close-up%20slot%20machine%203" alt="Imagen referencial de tragamonedas"><p class="media-caption">Imagen referencial de tragamonedas</p></div>
+                <div class="media-card"><img src="https://image.pollinations.ai/prompt/row%20of%20slot%20machines%204" alt="Imagen referencial de fila de tragamonedas"><p class="media-caption">Imagen referencial de tragamonedas</p></div>
+                <div class="media-card"><img src="https://image.pollinations.ai/prompt/roulette%20table%20in%20a%20casino%205" alt="Imagen referencial de mesa de ruleta"><p class="media-caption">Imagen referencial de ruleta</p></div>
             </div>
-
             <h3 class="gallery-subtitle">Imágenes Usadas</h3>
             <div class="media-grid">
-                <div class="media-card">
-                    <img src="../img/logo_casino.png" alt="Logo del Casino">
-                    <p class="media-caption">Logo Principal</p>
-                </div>
-                <div class="media-card">
-                    <img src="../img/blackjacklogo.png" alt="Logo de Blackjack">
-                    <p class="media-caption">Logo Blackjack</p>
-                </div>
-                <div class="media-card">
-                    <img src="../img/ruletalogo.png" alt="Logo de Ruleta">
-                    <p class="media-caption">Logo Ruleta</p>
-                </div>
-                <div class="media-card">
-                    <img src="../img/jackpotlogo.png" alt="Logo de Tragamonedas">
-                    <p class="media-caption">Logo Tragamonedas</p>
-                </div>
-                 <div class="media-card">
-                    <img src="../img/coinfliplogo.png" alt="Logo de Coin Flip">
-                    <p class="media-caption">Logo Coin Flip</p>
-                </div>
+                <div class="media-card"><img src="../img/logo_casino.png" alt="Logo del Casino"><p class="media-caption">Logo Principal</p></div>
+                <div class="media-card"><img src="../img/blackjacklogo.png" alt="Logo de Blackjack"><p class="media-caption">Logo Blackjack</p></div>
+                <div class="media-card"><img src="../img/ruletalogo.png" alt="Logo de Ruleta"><p class="media-caption">Logo Ruleta</p></div>
+                <div class="media-card"><img src="../img/jackpotlogo.png" alt="Logo de Tragamonedas"><p class="media-caption">Logo Tragamonedas</p></div>
+                <div class="media-card"><img src="../img/coinfliplogo.png" alt="Logo de Coin Flip"><p class="media-caption">Logo Coin Flip</p></div>
             </div>
-
             <h3 class="gallery-subtitle">Videos Usados</h3>
             <div class="media-grid">
-                <div class="media-card">
-                    <video loop muted controls playsinline>
-                        <source src="../img/fondo.mp4" type="video/mp4">
-                    </video>
-                    <p class="media-caption">Video de Fondo</p>
-                </div>
-                <div class="media-card">
-                    <video loop muted controls playsinline>
-                        <source src="../img/Ruleta.mp4" type="video/mp4">
-                    </video>
-                    <p class="media-caption">Video Ruleta</p>
-                </div>
-                <div class="media-card">
-                    <video loop muted controls playsinline>
-                        <source src="../img/blackjack.mp4" type="video/mp4">
-                    </video>
-                    <p class="media-caption">Video Blackjack</p>
-                </div>
-                <div class="media-card">
-                    <video loop muted controls playsinline>
-                        <source src="../img/Tragamonedas.mp4" type="video/mp4">
-                    </video>
-                    <p class="media-caption">Video Tragamonedas</p>
-                </div>
-                 <div class="media-card">
-                    <video loop muted controls playsinline>
-                        <source src="../img/coinflip.mp4" type="video/mp4">
-                    </video>
-                    <p class="media-caption">Video Coin Flip</p>
-                </div>
+                <div class="media-card"><video loop muted controls playsinline><source src="../img/fondo.mp4" type="video/mp4"></video><p class="media-caption">Video de Fondo</p></div>
+                <div class="media-card"><video loop muted controls playsinline><source src="../img/Ruleta.mp4" type="video/mp4"></video><p class="media-caption">Video Ruleta</p></div>
+                <div class="media-card"><video loop muted controls playsinline><source src="../img/blackjack.mp4" type="video/mp4"></video><p class="media-caption">Video Blackjack</p></div>
+                <div class="media-card"><video loop muted controls playsinline><source src="../img/Tragamonedas.mp4" type="video/mp4"></video><p class="media-caption">Video Tragamonedas</p></div>
+                <div class="media-card"><video loop muted controls playsinline><source src="../img/coinflip.mp4" type="video/mp4"></video><p class="media-caption">Video Coin Flip</p></div>
             </div>
-
         </section>
     </main>
     <footer class="footer">
-        <div class="container">
-            <p>© 2025 Palacio de la Fortuna. Todos los derechos reservados.</p>
-        </div>
+        <div class="container"><p>© 2025 Palacio de la Fortuna. Todos los derechos reservados.</p></div>
     </footer>
-
     <script src="../js/galeria.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', (event) => {
             const backButton = document.getElementById('btn-retroceso');
-            if (backButton) {
-                backButton.addEventListener('click', () => {
-                    window.history.back();
-                });
-            }
+            if (backButton) { backButton.addEventListener('click', () => { window.history.back(); }); }
         });
     </script>
 </body>

@@ -4,29 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palacio de la Fortuna - Sobre Nosotros</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="../img/logo_casino.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="../img/logo_casino.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="../img/logo_casino.png">
+    <link rel="icon" type="image/png" href="../img/logo_casino.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/sobre-nosotros.css">
 </head>
 <body>
-
     <div class="background-video-container">
-        <video autoplay loop muted playsinline class="background-video">
-            <source src="../img/fondo.mp4" type="video/mp4">
-            Tu navegador no soporta el elemento de video.
-        </video>
+        <video autoplay loop muted playsinline class="background-video"><source src="../img/fondo.mp4" type="video/mp4"></video>
         <div class="background-overlay"></div>
     </div>
-
     <header class="header">
         <div class="container header-content">
-            <div class="logo-container">
+            <a href="../index.html" class="logo-container">
                 <img src="../img/logo_casino.png" alt="Logo Palacio de la Fortuna" class="logo-img">
                 <h1 class="site-title">Palacio de la Fortuna</h1>
-            </div>
-            <button class="hamburger">☰</button>
+            </a>
             <nav class="main-nav">
                 <ul>
                     <li><a href="../index.html">Inicio</a></li>
@@ -36,101 +28,52 @@
                     <li><a href="sobre-nosotros.html">Sobre Nosotros</a></li>
                 </ul>
             </nav>
+            <button class="hamburger" aria-label="Abrir menú">
+                <span class="hamburger-box">
+                    <span class="hamburger-inner"></span>
+                </span>
+            </button>
         </div>
     </header>
-
     <main class="main-content">
         <section class="about-us-section container">
             <button id="btn-retroceso" class="back-button">← Volver Atrás</button>
             <h2 class="section-title">Sobre Nosotros</h2>
             <div class="about-us-content">
-                <video autoplay loop muted playsinline class="about-us-img">
-                    <source src="../img/Casinopantalla.mp4" type="video/mp4">
-                    Tu navegador no soporta el elemento de video.
-                </video>
+                <video autoplay loop muted playsinline class="about-us-img"><source src="../img/Casinopantalla.mp4" type="video/mp4"></video>
                 <div class="about-us-text">
-                    <p>
-                        Desde nuestra fundación en 2025, el Palacio de la Fortuna ha sido el principal foco de el entretenimiento y exclusividad. Nuestro compromiso es ofrecer una experiencia de juego inigualable en un ambiente de lujo. Contamos con los mejores y más conocidos juegos, desde los clásicos de mesa hasta las más modernas máquinas tragamonedas, garantizamos que cada visita sea una aventura inolvidable.
-                    </p>
-                    <p>
-                        Nuestros juegos, emocionantes y desafiantes llevarán tu emoción al límite. Te invitamos a descubrir un lugar donde la emoción y la fortuna se encuentran.
-                    </p>
+                    <p>Desde nuestra fundación en 2025, el Palacio de la Fortuna ha sido el principal foco de el entretenimiento y exclusividad. Nuestro compromiso es ofrecer una experiencia de juego inigualable en un ambiente de lujo. Contamos con los mejores y más conocidos juegos, desde los clásicos de mesa hasta las más modernas máquinas tragamonedas, garantizamos que cada visita sea una aventura inolvidable.</p>
+                    <p>Nuestros juegos, emocionantes y desafiantes llevarán tu emoción al límite. Te invitamos a descubrir un lugar donde la emoción y la fortuna se encuentran.</p>
                 </div>
             </div>
         </section>
-
         <section class="team-section container">
             <h2 class="section-title">Integrantes del proyecto</h2>
             <div class="team-grid">
-                <div class="team-card">
-                    <h3 class="team-member-name">Martín Yáñez</h3>
-                    <p class="team-member-role">Jefe del grupo</p>
-                    <p class="team-member-description">Encargado de la creación del código de los juegos y el casino, además de supervisar al resto del grupo.</p>
-                </div>
-                <div class="team-card">
-                    <h3 class="team-member-name">Vicente Venegas</h3>
-                    <p class="team-member-role">Documentador</p>
-                    <p class="team-member-description">Encargado de registrar los avances y correcciones del proyecto, además de registrar el proceso completo del desarrollo del casino y la página.</p>
-                </div>
-                <div class="team-card">
-                    <h3 class="team-member-name">Mateo Humeres</h3>
-                    <p class="team-member-role">Diseñador Frontend y Backend</p>
-                    <p class="team-member-description">Creador de la página web del casino, además de crear los primeros prototipos en figma.</p>
-                </div>
-                <div class="team-card">
-                    <h3 class="team-member-name">Sebastián Riffo</h3>
-                    <p class="team-member-role">Encargado de la base de datos</p>
-                    <p class="team-member-description">Creador y administrador de la base de datos usada en los juegos y generacion de efectos y temas para los juegos</p>
-                </div>
-                <div class="team-card">
-                    <h3 class="team-member-name">Dominic Gómez</h3>
-                    <p class="team-member-role">Documentador</p>
-                    <p class="team-member-description">Encargado de registrar en conjunto a Vicente, los avances y correcciones de los juegos del casino y la página en Canva.</p>
-                </div>
+                <div class="team-card"><h3 class="team-member-name">Martín Yáñez</h3><p class="team-member-role">Jefe del grupo</p><p class="team-member-description">Encargado de la creación del código de los juegos y el casino, además de supervisar al resto del grupo.</p></div>
+                <div class="team-card"><h3 class="team-member-name">Vicente Venegas</h3><p class="team-member-role">Documentador</p><p class="team-member-description">Encargado de registrar los avances y correcciones del proyecto, además de registrar el proceso completo del desarrollo del casino y la página.</p></div>
+                <div class="team-card"><h3 class="team-member-name">Mateo Humeres</h3><p class="team-member-role">Diseñador Frontend y Backend</p><p class="team-member-description">Creador de la página web del casino, además de crear los primeros prototipos en figma.</p></div>
+                <div class="team-card"><h3 class="team-member-name">Sebastián Riffo</h3><p class="team-member-role">Encargado de la base de datos</p><p class="team-member-description">Creador y administrador de la base de datos usada en los juegos y generacion de efectos y temas para los juegos</p></div>
+                <div class="team-card"><h3 class="team-member-name">Dominic Gómez</h3><p class="team-member-role">Documentador</p><p class="team-member-description">Encargado de registrar en conjunto a Vicente, los avances y correcciones de los juegos del casino y la página en Canva.</p></div>
             </div>
         </section>
-
         <section class="bitacoras-section container">
             <h3 class="bitacora-person-name">Bitácora de Vicente Venegas</h3>
-            <div style="position: relative; width: 100%; height: 0; padding-top: 56.2500%;
-            padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden;
-            border-radius: 10px; will-change: transform;">
-                <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
-                    src="https://www.canva.com/design/DAGt6CD-QZg/WiKyr-q-nvjs1u7xH-Nw_Q/view?embed" allowfullscreen="allowfullscreen" allow="fullscreen">
-                </iframe>
-            </div>
-            <a href="https://www.canva.com/design/DAGt6CD-QZg/WiKyr-q-nvjs1u7xH-Nw_Q/view?utm_content=DAGt6CD-QZg&utm_campaign=designshare&utm_medium=embeds&utm_source=link" target="_blank" rel="noopener" class="canva-link"></a>
+            <div style="position: relative; width: 100%; height: 0; padding-top: 56.2500%; padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden; border-radius: 10px; will-change: transform;"><iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;" src="https://www.canva.com/design/DAGt6CD-QZg/WiKyr-q-nvjs1u7xH-Nw_Q/view?embed" allowfullscreen="allowfullscreen" allow="fullscreen"></iframe></div>
         </section>
-        
         <section class="bitacoras-section container">
             <h3 class="bitacora-person-name">Bitácora de Dominic Gómez</h3>
-            <div style="position: relative; width: 100%; height: 0; padding-top: 56.2500%;
-            padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden;
-            border-radius: 10px; will-change: transform;">
-                <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
-                    src="https://www.canva.com/design/DAGTw4Oxql4/Z0IonqfHun3ZdMOhfJCqQQ/view?embed" allowfullscreen="allowfullscreen" allow="fullscreen">
-                </iframe>
-            </div>
-            <a href="https://www.canva.com/design/DAGTw4Oxql4/Z0IonqfHun3ZdMOhfJCqQQ/view?utm_content=DAGTw4Oxql4&utm_campaign=designshare&utm_medium=embeds&utm_source=link" target="_blank" rel="noopener"></a>
+            <div style="position: relative; width: 100%; height: 0; padding-top: 56.2500%; padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden; border-radius: 10px; will-change: transform;"><iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;" src="https://www.canva.com/design/DAGTw4Oxql4/Z0IonqfHun3ZdMOhfJCqQQ/view?embed" allowfullscreen="allowfullscreen" allow="fullscreen"></iframe></div>
         </section>
-    
     </main>
-
     <footer class="footer">
-        <div class="container">
-            <p>© 2025 Palacio de la Fortuna. Todos los derechos reservados.</p>
-        </div>
+        <div class="container"><p>© 2025 Palacio de la Fortuna. Todos los derechos reservados.</p></div>
     </footer>
-    
     <script src="../js/sobre-nosotros.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', (event) => {
             const backButton = document.getElementById('btn-retroceso');
-            if (backButton) {
-                backButton.addEventListener('click', () => {
-                    window.history.back();
-                });
-            }
+            if (backButton) { backButton.addEventListener('click', () => { window.history.back(); }); }
         });
     </script>
 </body>
