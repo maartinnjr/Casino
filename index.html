@@ -8,18 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
-
     <div class="background-video-container">
-        <video autoplay loop muted playsinline class="background-video">
+        <video autoplay loop muted playsinline class="background-video" disablepictureinpicture>
             <source src="img/fondo.mp4" type="video/mp4">
-            Tu navegador no soporta el elemento de video.
         </video>
         <div class="background-overlay"></div>
     </div>
-
     <header class="header">
         <div class="container header-content">
             <a href="index.html" class="logo-container">
@@ -42,7 +40,6 @@
             </button>
         </div>
     </header>
-
     <main class="main-content">
         <section class="hero-section">
             <div class="container">
@@ -57,7 +54,30 @@
                 </a>
             </div>
         </section>
-
+        <section class="ranking-section container">
+            <div id="user-ranking-container" class="ranking-container">
+                <img src="img/fondoranking.PNG" alt="Fondo Ranking" class="ranking-bg-image">
+                <div class="ranking-content">
+                    <h2 class="section-title">Ranking de Jugadores</h2>
+                    <button class="fullscreen-btn" data-target="user-ranking-container" aria-label="Ver en pantalla completa">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 2h-2v3h-3v2h5v-5zm-3-4V5h-2v5h5V7h-3z"/>
+                        </svg>
+                    </button>
+                    <table class="ranking-table">
+                        <thead>
+                            <tr>
+                                <th>Top</th>
+                                <th>Usuario</th>
+                                <th>Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-ranking-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
         <section class="games-section">
             <div class="container">
                 <h2 class="section-title">Juegos Destacados</h2>
@@ -65,83 +85,50 @@
             </div>
             <div class="games-carousel">
                 <div class="games-grid">
-                    <div class="game-card">
-                        <img src="img/blackjacklogo.png" alt="Blackjack" class="game-img">
-                        <h3 class="game-title">Blackjack</h3>
-                        <p class="game-description">Supera al crupier sin pasarte de 21. Estrategia y emoción.</p>
-                        <a href="html/servicios.html" class="game-button">Jugar Ahora</a>
-                    </div>
-                    <div class="game-card">
-                        <img src="img/ruletalogo.png" alt="Ruleta" class="game-img">
-                        <h3 class="game-title">La Ruleta</h3>
-                        <p class="game-description">Gira la rueda y prueba tu suerte en este clásico juego de azar.</p>
-                        <a href="html/servicios.html" class="game-button">Jugar Ahora</a>
-                    </div>
-                    <div class="game-card">
-                        <img src="img/jackpotlogo.png" alt="Tragamonedas" class="game-img">
-                        <h3 class="game-title">Tragamonedas</h3>
-                        <p class="game-description">Diversión y premios instantáneos. ¡Apunta al gran jackpot!</p>
-                        <a href="html/servicios.html" class="game-button">Jugar Ahora</a>
-                    </div>
-                    <div class="game-card">
-                        <img src="img/coinfliplogo.png" alt="CoinFlip" class="game-img">
-                        <h3 class="game-title">Coin Flip</h3>
-                        <p class="game-description">¿La suerte está de tu lado? Un 50/50 para duplicar tu apuesta.</p>
-                        <a href="html/servicios.html" class="game-button">Jugar Ahora</a>
-                    </div>
-                    <div class="game-card">
-                        <img src="img/blackjacklogo.png" alt="Blackjack" class="game-img">
-                        <h3 class="game-title">Blackjack</h3>
-                        <p class="game-description">Supera al crupier sin pasarte de 21. Estrategia y emoción.</p>
-                        <a href="html/servicios.html" class="game-button">Jugar Ahora</a>
-                    </div>
-                    <div class="game-card">
-                        <img src="img/ruletalogo.png" alt="Ruleta" class="game-img">
-                        <h3 class="game-title">La Ruleta</h3>
-                        <p class="game-description">Gira la rueda y prueba tu suerte en este clásico juego de azar.</p>
-                        <a href="html/servicios.html" class="game-button">Jugar Ahora</a>
-                    </div>
-                    <div class="game-card">
-                        <img src="img/jackpotlogo.png" alt="Tragamonedas" class="game-img">
-                        <h3 class="game-title">Tragamonedas</h3>
-                        <p class="game-description">Diversión y premios instantáneos. ¡Apunta al gran jackpot!</p>
-                        <a href="html/servicios.html" class="game-button">Jugar Ahora</a>
-                    </div>
-                    <div class="game-card">
-                        <img src="img/coinfliplogo.png" alt="CoinFlip" class="game-img">
-                        <h3 class="game-title">Coin Flip</h3>
-                        <p class="game-description">¿La suerte está de tu lado? Un 50/50 para duplicar tu apuesta.</p>
-                        <a href="html/servicios.html" class="game-button">Jugar Ahora</a>
-                    </div>
+                     <div class="game-card"><img src="img/blackjacklogo.png" alt="Blackjack" class="game-img"><h3 class="game-title">Blackjack</h3><p class="game-description">Supera al crupier sin pasarte de 21. Estrategia y emoción.</p><a href="html/servicios.html" class="game-button">¿Cómo Jugar?</a></div>
+                    <div class="game-card"><img src="img/ruletalogo.png" alt="Ruleta" class="game-img"><h3 class="game-title">La Ruleta</h3><p class="game-description">Gira la rueda y prueba tu suerte en este clásico juego de azar.</p><a href="html/servicios.html" class="game-button">¿Cómo Jugar?</a></div>
+                    <div class="game-card"><img src="img/jackpotlogo.png" alt="Tragamonedas" class="game-img"><h3 class="game-title">Tragamonedas</h3><p class="game-description">Diversión y premios instantáneos. ¡Apunta al gran jackpot!</p><a href="html/servicios.html" class="game-button">¿Cómo Jugar?</a></div>
+                    <div class="game-card"><img src="img/coinfliplogo.png" alt="CoinFlip" class="game-img"><h3 class="game-title">Coin Flip</h3><p class="game-description">¿La suerte está de tu lado? Un 50/50 para duplicar tu apuesta.</p><a href="html/servicios.html" class="game-button">¿Cómo Jugar?</a></div>
+                    <div class="game-card"><img src="img/blackjacklogo.png" alt="Blackjack" class="game-img"><h3 class="game-title">Blackjack</h3><p class="game-description">Supera al crupier sin pasarte de 21. Estrategia y emoción.</p><a href="html/servicios.html" class="game-button">¿Cómo Jugar?</a></div>
+                    <div class="game-card"><img src="img/ruletalogo.png" alt="Ruleta" class="game-img"><h3 class="game-title">La Ruleta</h3><p class="game-description">Gira la rueda y prueba tu suerte en este clásico juego de azar.</p><a href="html/servicios.html" class="game-button">¿Cómo Jugar?</a></div>
+                    <div class="game-card"><img src="img/jackpotlogo.png" alt="Tragamonedas" class="game-img"><h3 class="game-title">Tragamonedas</h3><p class="game-description">Diversión y premios instantáneos. ¡Apunta al gran jackpot!</p><a href="html/servicios.html" class="game-button">¿Cómo Jugar?</a></div>
+                    <div class="game-card"><img src="img/coinfliplogo.png" alt="CoinFlip" class="game-img"><h3 class="game-title">Coin Flip</h3><p class="game-description">¿La suerte está de tu lado? Un 50/50 para duplicar tu apuesta.</p><a href="html/servicios.html" class="game-button">¿Cómo Jugar?</a></div>
                 </div>
             </div>
         </section>
-        
         <section class="history-section container">
-            <div class="ranking-container">
-                <h2 class="section-title">📜 Historial de Partidas 📜</h2>
-                <table class="ranking-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Nombre</th>
-                            <th>Apostó</th>
-                            <th>Juego</th>
-                            <th>Resultado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ranking-body">
-                    </tbody>
-                </table>
+            <div id="history-container" class="ranking-container">
+                <img src="img/fondoranking.PNG" alt="Fondo Historial" class="ranking-bg-image">
+                <div class="ranking-content">
+                    <h2 class="section-title">Historial de Partidas</h2>
+                    <button class="fullscreen-btn" data-target="history-container" aria-label="Ver en pantalla completa">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                           <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 2h-2v3h-3v2h5v-5zm-3-4V5h-2v5h5V7h-3z"/>
+                        </svg>
+                    </button>
+                    <table class="ranking-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Nombre</th>
+                                <th>Apostó</th>
+                                <th>Juego</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-body">
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
-
     </main>
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2025 Palacio de la Fortuna. Todos los derechos reservados.</p>
+            <p>© 2025 Palacio de la Fortuna. Todos los derechos reservados.</p>
         </div>
     </footer>
+    <script src="js/global.js"></script>
     <script src="js/index.js"></script>
 </body>
 </html>

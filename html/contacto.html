@@ -4,29 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palacio de la Fortuna - Contacto</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="../img/logo_casino.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="../img/logo_casino.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="../img/logo_casino.png">
+    <link rel="icon" type="image/png" href="../img/logo_casino.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/global.css">
     <link rel="stylesheet" href="../css/contacto.css">
 </head>
 <body>
-
     <div class="background-video-container">
-        <video autoplay loop muted playsinline class="background-video">
-            <source src="../img/fondo.mp4" type="video/mp4">
-            Tu navegador no soporta el elemento de video.
-        </video>
+        <video autoplay loop muted playsinline class="background-video" disablepictureinpicture><source src="../img/fondo.mp4" type="video/mp4"></video>
         <div class="background-overlay"></div>
     </div>
-
     <header class="header">
         <div class="container header-content">
-            <div class="logo-container">
+            <a href="../index.html" class="logo-container">
                 <img src="../img/logo_casino.png" alt="Logo Palacio de la Fortuna" class="logo-img">
                 <h1 class="site-title">Palacio de la Fortuna</h1>
-            </div>
-            <button class="hamburger">☰</button>
+            </a>
             <nav class="main-nav">
                 <ul>
                     <li><a href="../index.html">Inicio</a></li>
@@ -36,34 +29,25 @@
                     <li><a href="sobre-nosotros.html">Sobre Nosotros</a></li>
                 </ul>
             </nav>
+            <button class="hamburger" aria-label="Abrir menú">
+                <span class="hamburger-box">
+                    <span class="hamburger-inner"></span>
+                </span>
+            </button>
         </div>
     </header>
-
     <main class="main-content">
         <section class="contact-section container">
             <button id="btn-retroceso" class="back-button">← Volver Atrás</button>
             <h2 class="section-title">Contacto</h2>
             <p class="section-subtitle">Estamos aquí para responder a todas tus preguntas. Envíanos un mensaje o visítanos.</p>
-
             <div class="contact-container">
                 <div class="contact-form">
                     <form id="contact-form" action="#" method="POST">
-                        <div class="form-group">
-                            <label for="name">Nombre</label>
-                            <input type="text" id="name" name="name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="email">Correo Electrónico</label>
-                            <input type="email" id="email" name="email" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Número de Teléfono</label>
-                            <input type="tel" id="phone" name="phone">
-                        </div>
-                        <div class="form-group">
-                            <label for="message">Mensaje</label>
-                            <textarea id="message" name="message" rows="5" required></textarea>
-                        </div>
+                        <div class="form-group"><label for="name">Nombre</label><input type="text" id="name" name="name" required></div>
+                        <div class="form-group"><label for="email">Correo Electrónico</label><input type="email" id="email" name="email" required></div>
+                        <div class="form-group"><label for="phone">Número de Teléfono</label><input type="tel" id="phone" name="phone"></div>
+                        <div class="form-group"><label for="message">Mensaje</label><textarea id="message" name="message" rows="5" required></textarea></div>
                         <button type="submit" class="submit-button">Enviar Mensaje</button>
                     </form>
                 </div>
@@ -73,35 +57,21 @@
                     <p><strong>Teléfono:</strong> 9 4577 0442 </p>
                     <p><strong>Correo:</strong> contact.palaciodelafortuna@gmail.com</p>
                     <p><strong>Horario:</strong> Lunes a Viernes, 08:00 a 18:30 horas</p>
-                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3323.018957860155!2d-70.9238656847954!3d-33.60621378074902!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x96634c06f1d8c117%3A0xc3f58a7d32c02976!2sBalmaceda%20627%2C%209670000%20Talagante%2C%20Regi%C3%B3n%20Metropolitana!5e0!3m2!1ses-419!2scl!4v1625510619717!5m2!1ses-419!2scl" width="90%" height="300" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d207.55303836981528!2d-70.92614424632532!3d-33.661084262784875!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9662e364d248e2fd%3A0xa634ddb700903fe7!2sInstituto%20de%20Ciencias%20y%20Tecnolog%C3%ADa%20Talagante!5e0!3m2!1ses-419!2scl!4v1756275686512!5m2!1ses-419!2scl" width="90%" height="300" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                 </div>
             </div>
         </section>
     </main>
-
     <div id="confirmation-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <p class="modal-title">Mensaje enviado con éxito!</p>
+            <p class="modal-title">¡Mensaje enviado con éxito!</p>
             <p class="modal-subtitle">Presiona en cualquier lugar para cerrar</p>
         </div>
     </div>
-    
     <footer class="footer">
-        <div class="container">
-            <p>© 2025 Palacio de la Fortuna. Todos los derechos reservados.</p>
-        </div>
+        <div class="container"><p>© 2025 Palacio de la Fortuna. Todos los derechos reservados.</p></div>
     </footer>
-    
+    <script src="../js/global.js"></script>
     <script src="../js/contacto.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', (event) => {
-            const backButton = document.getElementById('btn-retroceso');
-            if (backButton) {
-                backButton.addEventListener('click', () => {
-                    window.history.back();
-                });
-            }
-        });
-    </script>
 </body>
 </html>
