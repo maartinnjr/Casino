@@ -11,7 +11,11 @@
 </head>
 <body>
     <div class="background-video-container">
+<<<<<<< HEAD
         <video autoplay loop muted playsinline class="background-video" disablepictureinpicture><source src="../img/fondo.mp4" type="video/mp4"></video>
+=======
+        <video autoplay loop muted playsinline class="background-video"><source src="../img/fondo.mp4" type="video/mp4"></video>
+>>>>>>> 1bf6cbece2dee54ab6b8d722d7355c4cef9e0304
         <div class="background-overlay"></div>
     </div>
     <header class="header">
@@ -72,7 +76,17 @@
     <footer class="footer">
         <div class="container"><p>© 2025 Palacio de la Fortuna. Todos los derechos reservados.</p></div>
     </footer>
+<<<<<<< HEAD
     <script src="../js/global.js"></script>
     <script src="../js/galeria.js"></script>
+=======
+    <script src="../js/galeria.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const backButton = document.getElementById('btn-retroceso');
+            if (backButton) { backButton.addEventListener('click', () => { window.history.back(); }); }
+        });
+    </script>
+>>>>>>> 1bf6cbece2dee54ab6b8d722d7355c4cef9e0304
 </body>
 </html>
