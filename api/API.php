@@ -5,8 +5,8 @@ header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
 
 $servidor = "127.0.0.1";
-$usuario = "root";
-$contrasena = "";
+$usuario = "Casino";
+$contrasena = "casino123";
 $base_de_datos = "casinodb";
 $puerto = 3306;
 
@@ -17,9 +17,9 @@ if ($conexion->connect_error) {
 }
 
 $accion = isset($_GET['accion']) ? $_GET['accion'] : 'historial';
+$sql = '';
 
 if ($accion == 'ranking_usuarios') {
-    // --- CONSULTA PARA EL RANKING DE USUARIOS (AHORA LIMIT 10) ---
     $sql = "
         SELECT 
             usuario, 
@@ -30,17 +30,7 @@ if ($accion == 'ranking_usuarios') {
             saldo DESC
         LIMIT 10
     ";
-    $resultado = $conexion->query($sql);
-    $datos = [];
-    if ($resultado && $resultado->num_rows > 0) {
-        while($fila = $resultado->fetch_assoc()) {
-            $datos[] = $fila;
-        }
-    }
-    echo json_encode($datos);
-
-} else {
-    // --- CONSULTA PARA EL HISTORIAL DE PARTIDAS (POR DEFECTO) ---
+} elseif ($accion == 'historial') {
     $sql = "
         SELECT 
             u.usuario, 
@@ -58,15 +48,19 @@ if ($accion == 'ranking_usuarios') {
             h.id DESC
         LIMIT 10
     ";
+}
+
+$datos = [];
+if (!empty($sql)) {
     $resultado = $conexion->query($sql);
-    $datos = [];
     if ($resultado && $resultado->num_rows > 0) {
         while($fila = $resultado->fetch_assoc()) {
             $datos[] = $fila;
         }
     }
-    echo json_encode($datos);
 }
+
+echo json_encode($datos);
 
 $conexion->close();
 ?>

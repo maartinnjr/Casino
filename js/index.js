@@ -1,41 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-<<<<<<< HEAD
-=======
-    const header = document.querySelector('.header');
-    const hamburger = document.querySelector('.hamburger');
-    const mainNav = document.querySelector('.main-nav');
-    let lastScrollY = window.scrollY;
-
-    hamburger.addEventListener('click', function() {
-        const isOpening = !mainNav.classList.contains('active');
-        mainNav.classList.toggle('active');
-        hamburger.classList.toggle('is-active');
-
-        if (isOpening) {
-            header.classList.remove('scrolled', 'up');
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-    });
-
-    window.addEventListener('scroll', () => {
-        if (!mainNav.classList.contains('active')) {
-            if (window.scrollY > lastScrollY && window.scrollY > 100) {
-                header.classList.add('scrolled');
-                header.classList.remove('up');
-            } else if (window.scrollY < lastScrollY) {
-                header.classList.add('up');
-            }
-            if (window.scrollY <= 50) {
-                 header.classList.remove('scrolled', 'up');
-            }
-            lastScrollY = window.scrollY;
-        }
-    });
-
-    // --- LÓGICA PARA EL HISTORIAL DE PARTIDAS ---
->>>>>>> 1bf6cbece2dee54ab6b8d722d7355c4cef9e0304
     function displayGameHistory(data) {
         const rankingBody = document.getElementById('ranking-body');
         if (!rankingBody) return;
@@ -63,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchGameHistory() {
         try {
-            const response = await fetch('/Casino_Local/api/API.php?accion=historial');
+            const response = await fetch('api/API.php?accion=historial');
             const data = await response.json();
             displayGameHistory(data);
         } catch (error) {
@@ -71,10 +34,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-<<<<<<< HEAD
-=======
-    // --- LÓGICA PARA EL RANKING DE USUARIOS ---
->>>>>>> 1bf6cbece2dee54ab6b8d722d7355c4cef9e0304
     function displayUserRanking(data) {
         const userRankingBody = document.getElementById('user-ranking-body');
         if (!userRankingBody) return;
@@ -93,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchUserRanking() {
         try {
-            const response = await fetch('/Casino_Local/api/API.php?accion=ranking_usuarios');
+            const response = await fetch('api/API.php?accion=ranking_usuarios');
             const data = await response.json();
             displayUserRanking(data);
         } catch (error) {
@@ -101,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-<<<<<<< HEAD
     function handleFullscreen() {
         const fullscreenBtns = document.querySelectorAll('.fullscreen-btn');
         fullscreenBtns.forEach(btn => {
@@ -123,14 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     fetchGameHistory();
     fetchUserRanking();
-    setInterval(fetchGameHistory, 30000);
-    setInterval(fetchUserRanking, 30000);
+    setInterval(fetchGameHistory, 10000);
+    setInterval(fetchUserRanking, 10000);
     handleFullscreen();
-=======
-    // Carga inicial y actualización periódica para ambas tablas
-    fetchGameHistory();
-    fetchUserRanking();
-    setInterval(fetchGameHistory, 5000);
-    setInterval(fetchUserRanking, 5000);
->>>>>>> 1bf6cbece2dee54ab6b8d722d7355c4cef9e0304
 });
